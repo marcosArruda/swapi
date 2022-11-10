@@ -2,6 +2,8 @@ package services
 
 import (
 	"context"
+
+	"github.com/peterhellberg/swapi"
 )
 
 type (
@@ -35,7 +37,8 @@ func (n *noOpsSwApiService) ServiceManager() ServiceManager {
 	return n.sm
 }
 
-func (n *noOpsSwApiService) WithDatabase(db Database) SwApiService {
-	return n
+func (n *noOpsSwApiService) GetPlanetById(id int) (*swapi.Planet, error) {
+	return &swapi.Planet{
+		Name: "DummyPlanet",
+	}, nil
 }
-func (n *noOpsSwApiService) Get() {}

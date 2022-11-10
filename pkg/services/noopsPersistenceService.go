@@ -2,6 +2,8 @@ package services
 
 import (
 	"context"
+
+	"github.com/marcosArruda/swapi/pkg/models"
 )
 
 type (
@@ -35,9 +37,6 @@ func (n *noOpsPersistenceService) ServiceManager() ServiceManager {
 	return n.sm
 }
 
-func (n *noOpsPersistenceService) WithDatabase(db Database) PersistenceService {
-	return n
-}
-func (n *noOpsPersistenceService) Insert() error {
+func (n *noOpsPersistenceService) UpsertPlanet(ctx context.Context, p *models.Planet) error {
 	return nil
 }

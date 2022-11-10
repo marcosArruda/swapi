@@ -2,6 +2,9 @@ package services
 
 import (
 	"context"
+
+	"github.com/marcosArruda/swapi/pkg/models"
+	"github.com/peterhellberg/swapi"
 )
 
 type (
@@ -25,29 +28,22 @@ type (
 		GenericService
 		WithServiceManager(sm ServiceManager) Database
 		ServiceManager() ServiceManager
-		Connect() error
+		GetPlanetById(ctx context.Context, id int) (*models.Planet, error)
+		InsertPlanet(ctx context.Context, p *models.Planet) (*models.Planet, error)
 	}
 
 	PersistenceService interface {
 		GenericService
 		WithServiceManager(sm ServiceManager) PersistenceService
 		ServiceManager() ServiceManager
-		WithDatabase(db Database) PersistenceService
-		Insert() error
-	}
-
-	GenericApiService interface {
-		GenericService
-		WithServiceManager(sm ServiceManager) GenericApiService
-		ServiceManager() ServiceManager
-		Get()
+		UpsertPlanet(ctx context.Context, p *models.Planet) error
 	}
 
 	SwApiService interface {
 		GenericService
 		WithServiceManager(sm ServiceManager) SwApiService
 		ServiceManager() ServiceManager
-		Get()
+		GetPlanetById(id int) (*swapi.Planet, error)
 	}
 
 	HttpService interface {
@@ -63,6 +59,8 @@ type (
 		LogsService() LogsService
 		WithPersistenceService(p PersistenceService) ServiceManager
 		PersistenceService() PersistenceService
+		WithDatabase(db Database) ServiceManager
+		Database() Database
 		WithHttpService(h HttpService) ServiceManager
 		HttpService() HttpService
 
@@ -72,6 +70,7 @@ type (
 
 	serviceManagerFinal struct {
 		logsService        LogsService
+		database           Database
 		persistenceService PersistenceService
 		swApiService       SwApiService
 		httpService        HttpService
@@ -176,6 +175,15 @@ func (m *serviceManagerFinal) WithPersistenceService(p PersistenceService) Servi
 
 func (m *serviceManagerFinal) PersistenceService() PersistenceService {
 	return m.persistenceService
+}
+
+func (m *serviceManagerFinal) WithDatabase(db Database) ServiceManager {
+	m.database = db.WithServiceManager(m)
+	return m
+}
+
+func (m *serviceManagerFinal) Database() Database {
+	return m.database
 }
 
 func (m *serviceManagerFinal) WithSwApiService(sw SwApiService) ServiceManager {

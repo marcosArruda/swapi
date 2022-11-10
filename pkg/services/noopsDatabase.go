@@ -2,6 +2,8 @@ package services
 
 import (
 	"context"
+
+	"github.com/marcosArruda/swapi/pkg/models"
 )
 
 type (
@@ -35,6 +37,10 @@ func (n *noOpsDatabase) ServiceManager() ServiceManager {
 	return n.sm
 }
 
-func (n *noOpsDatabase) Connect() error {
-	return nil
+func (n *noOpsDatabase) GetPlanetById(ctx context.Context, id int) (*models.Planet, error) {
+	return nil, nil
+}
+
+func (n *noOpsDatabase) InsertPlanet(ctx context.Context, p *models.Planet) (*models.Planet, error) {
+	return nil, nil
 }
