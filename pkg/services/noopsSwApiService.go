@@ -37,8 +37,15 @@ func (n *noOpsSwApiService) ServiceManager() ServiceManager {
 	return n.sm
 }
 
-func (n *noOpsSwApiService) GetPlanetById(id int) (*swapi.Planet, error) {
+func (n *noOpsSwApiService) GetPlanetById(ctx context.Context, id int) (*swapi.Planet, error) {
 	return &swapi.Planet{
 		Name: "DummyPlanet",
 	}, nil
+}
+
+func (n *noOpsSwApiService) PutOnline()  {}
+func (n *noOpsSwApiService) PutOffline() {}
+
+func (n *noOpsSwApiService) IsOnline() bool {
+	return false
 }

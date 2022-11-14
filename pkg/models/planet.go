@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -15,12 +16,13 @@ type (
 		Name     string   `json:"name"`
 		Climate  string   `json:"climate"`
 		Terrain  string   `json:"terrain"`
-		FilmURLs []string `json:"films"`
+		FilmURLs []string `json:"film_urls"`
+		Films    []*Film  `json:"films"`
 		URL      string   `json:"url"`
 	}
 )
 
-func ToPersistentPlanet(p *swapi.Planet, id int) (*Planet, error) {
+func ToPersistentPlanet(ctx context.Context, p *swapi.Planet, id int) (*Planet, error) {
 	pp := &Planet{
 		Name:     p.Name,
 		Climate:  p.Climate,

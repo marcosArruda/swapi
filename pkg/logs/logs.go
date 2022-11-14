@@ -2,6 +2,7 @@ package logs
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/marcosArruda/swapi/pkg/services"
 )
@@ -17,6 +18,7 @@ func NewLogsService(ctx context.Context) services.LogsService {
 }
 
 func (f *logsServiceFinal) Start(ctx context.Context) error {
+	f.Info(ctx, "Staring LogsService")
 	return nil
 }
 func (f *logsServiceFinal) Close(ctx context.Context) error {
@@ -32,7 +34,15 @@ func (f *logsServiceFinal) WithServiceManager(sm services.ServiceManager) servic
 func (f *logsServiceFinal) ServiceManager() services.ServiceManager {
 	return f.sm
 }
-func (f *logsServiceFinal) Info(s string)  {}
-func (f *logsServiceFinal) Warn(s string)  {}
-func (f *logsServiceFinal) Error(s string) {}
-func (f *logsServiceFinal) Debug(s string) {}
+func (f *logsServiceFinal) Info(ctx context.Context, s string) {
+	fmt.Println("(INFO) " + s)
+}
+func (f *logsServiceFinal) Warn(ctx context.Context, s string) {
+	fmt.Println("(WARN) " + s)
+}
+func (f *logsServiceFinal) Error(ctx context.Context, s string) {
+	fmt.Println("(ERROR) " + s)
+}
+func (f *logsServiceFinal) Debug(ctx context.Context, s string) {
+	fmt.Println("(DEBUG) " + s)
+}

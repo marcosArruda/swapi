@@ -40,3 +40,23 @@ func (n *noOpsPersistenceService) ServiceManager() ServiceManager {
 func (n *noOpsPersistenceService) UpsertPlanet(ctx context.Context, p *models.Planet) error {
 	return nil
 }
+
+func (n *noOpsPersistenceService) GetPlanetById(ctx context.Context, id int) (*models.Planet, error) {
+	return nil, nil
+}
+
+func (n *noOpsPersistenceService) SearchPlanetsByName(ctx context.Context, name string) ([]*models.Planet, error) {
+	return EmptyPlanetSlice, nil
+}
+
+func (n *noOpsPersistenceService) ListAllPlanets(ctx context.Context) ([]*models.Planet, error) {
+	return EmptyPlanetSlice, nil
+}
+
+func (n *noOpsPersistenceService) RemovePlanetById(ctx context.Context, id int) error {
+	return nil
+}
+
+func (n *noOpsPersistenceService) RemovePlanetByExactName(ctx context.Context, exactName string) error {
+	return nil
+}

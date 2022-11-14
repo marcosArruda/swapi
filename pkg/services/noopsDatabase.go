@@ -41,6 +41,26 @@ func (n *noOpsDatabase) GetPlanetById(ctx context.Context, id int) (*models.Plan
 	return nil, nil
 }
 
-func (n *noOpsDatabase) InsertPlanet(ctx context.Context, p *models.Planet) (*models.Planet, error) {
-	return nil, nil
+func (n *noOpsDatabase) SearchPlanetsByName(ctx context.Context, name string) ([]*models.Planet, error) {
+	return EmptyPlanetSlice, nil
+}
+
+func (n *noOpsDatabase) InsertPlanet(ctx context.Context, p *models.Planet) error {
+	return nil
+}
+
+func (n *noOpsDatabase) UpdatePlanet(ctx context.Context, p *models.Planet) error {
+	return nil
+}
+
+func (n *noOpsDatabase) ListAllPlanets(ctx context.Context) ([]*models.Planet, error) {
+	return EmptyPlanetSlice, nil
+}
+
+func (n *noOpsDatabase) RemovePlanetById(ctx context.Context, id int) error {
+	return nil
+}
+
+func (n *noOpsDatabase) RemovePlanetByExactName(ctx context.Context, exactName string) error {
+	return nil
 }

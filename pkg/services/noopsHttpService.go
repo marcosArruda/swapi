@@ -2,6 +2,8 @@ package services
 
 import (
 	"context"
+
+	"github.com/gin-gonic/gin"
 )
 
 type (
@@ -10,11 +12,12 @@ type (
 	}
 )
 
-func NewHttpService(ctx context.Context) HttpService {
+func NewNoOpsHttpService(ctx context.Context) HttpService {
 	return &noOpsHttpService{}
 }
 
 func (n *noOpsHttpService) Start(ctx context.Context) error {
+	gin.SetMode(gin.DebugMode)
 	return nil
 }
 
@@ -35,10 +38,8 @@ func (n *noOpsHttpService) ServiceManager() ServiceManager {
 	return n.sm
 }
 
-func (n *noOpsHttpService) WithDatabase(db Database) HttpService {
-	return n
-}
-
-func (n *noOpsHttpService) StartListening(ctx context.Context) error {
-	return nil
-}
+func (n *noOpsHttpService) GetPlanetById(c *gin.Context)           {}
+func (n *noOpsHttpService) SearchPlanetsByName(c *gin.Context)     {}
+func (n *noOpsHttpService) ListAllPlanets(c *gin.Context)          {}
+func (n *noOpsHttpService) RemovePlanetById(c *gin.Context)        {}
+func (n *noOpsHttpService) RemovePlanetByExactName(c *gin.Context) {}

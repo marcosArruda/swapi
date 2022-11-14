@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  swapi-app:
+    build: .
+    environment:
+      DB_NAME: 'swapiapp'
+      DB_USER: 'swapiapp-user'
+      DB_PASSWORD: 'swapiapp-password'
+    ports:
+      - "8080:8080"
+
+  db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_DATABASE: 'swapiapp'
+      MYSQL_USER: 'swapiapp-user'
+      MYSQL_PASSWORD: 'swapiapp-password'
+      MYSQL_ROOT_PASSWORD: 'mysql_root_password'
+    ports:
+      - '3306:3306'
+    expose:
+      - '3306'
+    volumes:
+      - swapiapp-volume:./.swapiapp-volume-data
+volumes:
+  swapiapp-volume:

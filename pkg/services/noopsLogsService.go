@@ -30,7 +30,7 @@ func (f *noOpsLogsService) WithServiceManager(sm ServiceManager) LogsService {
 func (f *noOpsLogsService) ServiceManager() ServiceManager {
 	return f.sm
 }
-func (f *noOpsLogsService) Info(s string)  {}
-func (f *noOpsLogsService) Warn(s string)  {}
-func (f *noOpsLogsService) Error(s string) {}
-func (f *noOpsLogsService) Debug(s string) {}
+func (f *noOpsLogsService) Info(ctx context.Context, s string)  {}
+func (f *noOpsLogsService) Warn(ctx context.Context, s string)  {}
+func (f *noOpsLogsService) Error(ctx context.Context, s string) {}
+func (f *noOpsLogsService) Debug(ctx context.Context, s string) {}

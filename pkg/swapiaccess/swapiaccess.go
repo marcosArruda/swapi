@@ -2,7 +2,6 @@ package swapiaccess
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/marcosArruda/swapi/pkg/messages"
 	"github.com/marcosArruda/swapi/pkg/services"
@@ -17,20 +16,12 @@ type (
 	}
 )
 
-func xxx() {
-	c := swapi.DefaultClient
-
-	if atst, err := c.Vehicle(19); err == nil {
-		fmt.Println("name: ", atst.Name)
-		fmt.Println("model:", atst.Model)
-	}
-}
-
 func NewSwService(ctx context.Context, online bool) services.SwApiService {
 	return &swApiServiceFinal{swclient: swapi.DefaultClient, online: online}
 }
 
 func (n *swApiServiceFinal) Start(ctx context.Context) error {
+	n.sm.LogsService().Info(ctx, "SwApi Service Started Started!")
 	return nil
 }
 
@@ -42,20 +33,12 @@ func (n *swApiServiceFinal) Healthy(ctx context.Context) error {
 	if n.online {
 		_, err := n.swclient.Planet(1)
 		if err != nil {
-			n.sm.LogsService().Warn(messages.SwApiUnavailableError.Error())
+			n.sm.LogsService().Warn(ctx, messages.SwApiUnavailableError.Error())
 			n.online = false
 			return messages.SwApiUnavailableError
 		}
 	}
 	return nil
-}
-
-func (n *swApiServiceFinal) PutOnline() {
-	n.online = true
-}
-
-func (n *swApiServiceFinal) PutOffline() {
-	n.online = false
 }
 
 func (n *swApiServiceFinal) WithServiceManager(sm services.ServiceManager) services.SwApiService {
@@ -67,7 +50,7 @@ func (n *swApiServiceFinal) ServiceManager() services.ServiceManager {
 	return n.sm
 }
 
-func (n *swApiServiceFinal) GetPlanetById(id int) (*swapi.Planet, error) {
+func (n *swApiServiceFinal) GetPlanetById(ctx context.Context, id int) (*swapi.Planet, error) {
 	if n.online {
 		p, err := n.swclient.Planet(id)
 		if err != nil {
@@ -76,4 +59,16 @@ func (n *swApiServiceFinal) GetPlanetById(id int) (*swapi.Planet, error) {
 		return &p, nil
 	}
 	return nil, messages.SwApiIsOfflineError
+}
+
+func (n *swApiServiceFinal) PutOnline() {
+	n.online = true
+}
+
+func (n *swApiServiceFinal) PutOffline() {
+	n.online = false
+}
+
+func (n *swApiServiceFinal) IsOnline() bool {
+	return n.online
 }

@@ -7,6 +7,7 @@ import (
 var (
 	SwApiUnavailableError = errors.New("something went wrong accessing swapi.dev. I will change the sistem to 'offline' mode for now")
 	SwApiIsOfflineError   = errors.New("SwApi is in 'offline' mode now.")
+	NoPlanetFound         = errors.New("No Planet found")
 )
 
 type (

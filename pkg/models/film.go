@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -14,12 +15,12 @@ type Film struct {
 	Title      string   `json:"title"`
 	EpisodeID  int      `json:"episode_id"`
 	Director   string   `json:"director"`
-	PlanetURLs []string `json:"planets"`
+	PlanetURLs []string `json:"planet_urls"`
 	Created    string   `json:"created"`
 	URL        string   `json:"url"`
 }
 
-func ToPersistentFilm(f *swapi.Film, id int) (*Film, error) {
+func ToPersistentFilm(ctx context.Context, f *swapi.Film, id int) (*Film, error) {
 	ff := &Film{
 		Title:      f.Title,
 		EpisodeID:  f.EpisodeID,
