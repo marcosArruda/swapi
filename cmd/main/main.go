@@ -5,14 +5,16 @@ import (
 
 	"github.com/marcosArruda/swapi/pkg/httpservice"
 	"github.com/marcosArruda/swapi/pkg/logs"
+	"github.com/marcosArruda/swapi/pkg/persistence"
 	"github.com/marcosArruda/swapi/pkg/services"
 )
 
 func main() {
 	ctx := context.Background()
+	//time.Sleep(5 * time.Second)
 	services.NewManager(ctx).
 		WithLogsService(logs.NewLogsService(ctx)).
-		//WithDatabase(persistence.NewDatabase(ctx)).
+		WithDatabase(persistence.NewDatabase(ctx)).
 		//WithPersistenceService(persistence.NewPersistenceService(ctx)).
 		//WithSwApiService(swapiaccess.NewSwService(ctx, true)).
 		//WithPlanetFinderService(planetfinder.NewPlanetFinderService(ctx)).

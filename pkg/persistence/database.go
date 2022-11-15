@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -26,21 +27,26 @@ func NewDatabase(ctx context.Context) services.Database {
 }
 
 func (n *mysqlDatabaseFinal) Start(ctx context.Context) error {
-	db, err := sql.Open("mysql", "user7:s$cret@tcp(127.0.0.1:3306)/testdb")
+	sm := n.ServiceManager()
+	dbName := os.Getenv("DB_NAME")
+	dbUser := os.Getenv("DB_USER")
+	dbPass := os.Getenv("DB_PASSWORD")
+	db, err := sql.Open("mysql", dbUser+":"+dbPass+"@tcp(db:3306)/"+dbName)
+	slogs := sm.LogsService()
+	if err != nil {
+		slogs.Error(ctx, err.Error())
+		return err
+	}
 	db.SetMaxOpenConns(5)
 	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(time.Minute * 5)
-	if err != nil {
-		n.sm.LogsService().Error(ctx, err.Error())
-		return err
-	}
 
 	n.db = db
 	if errH := n.Healthy(ctx); errH != nil {
-		n.sm.LogsService().Error(ctx, err.Error())
-		return err
+		slogs.Error(ctx, errH.Error())
+		return errH
 	}
-	n.sm.LogsService().Info(ctx, "Database Started!")
+	slogs.Info(ctx, "Database Started!")
 	return nil
 }
 
@@ -49,7 +55,8 @@ func (n *mysqlDatabaseFinal) Close(ctx context.Context) error {
 }
 
 func (n *mysqlDatabaseFinal) Healthy(ctx context.Context) error {
-	return n.db.QueryRow("SELECT VERSION()").Scan(&version)
+	db := n.db
+	return db.QueryRow("SELECT VERSION()").Scan(&version)
 }
 
 func (n *mysqlDatabaseFinal) WithServiceManager(sm services.ServiceManager) services.Database {

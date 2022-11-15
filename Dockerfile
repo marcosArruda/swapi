@@ -6,10 +6,9 @@ RUN apk add --no-cache git
 WORKDIR /tmp/swapi-app
 
 # We want to populate the module cache based on the go.{mod,sum} files.
-COPY go.mod .
-COPY go.sum .
-RUN go mod tidy
 COPY . .
+RUN go mod tidy
+RUN go mod download
 
 #RUN CGO_ENABLED=0 go test -v
 
