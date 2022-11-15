@@ -11,9 +11,9 @@ COPY go.sum .
 RUN go mod tidy
 COPY . .
 
-RUN CGO_ENABLED=0 go test -v
+#RUN CGO_ENABLED=0 go test -v
 
-RUN go build -o ./out/swapi-app cmd/main/main.go
+RUN go build -o ./out/swapi-app ./cmd/main/main.go
 
 FROM alpine:3.16
 RUN apk add ca-certificates

@@ -7,6 +7,8 @@ services:
       DB_NAME: 'swapiapp'
       DB_USER: 'swapiapp-user'
       DB_PASSWORD: 'swapiapp-password'
+    expose:
+      - '8080'
     ports:
       - "8080:8080"
 
@@ -23,6 +25,6 @@ services:
     expose:
       - '3306'
     volumes:
-      - swapiapp-volume:./.swapiapp-volume-data
+      - swapiapp-volume:/var/lib/mysql
 volumes:
   swapiapp-volume:

@@ -39,7 +39,7 @@ func (n *httpServiceFinal) Start(ctx context.Context) error {
 	n.router.DELETE("/planet/n/:name", n.RemovePlanetByExactName)
 	n.router.GET("/planets", n.ListAllPlanets)
 	n.srv = &http.Server{
-		Addr:    "localhost:8080",
+		Addr:    ":8080",
 		Handler: n.router,
 	}
 
