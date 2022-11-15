@@ -1,11 +1,10 @@
 version: "3.9"
 
 services:
-  swapi-app:
+  swapiapp:
     build: .
     container_name: swapiapp
-    depends_on:
-      - db
+    
     #healthcheck:
     #  test: curl --fail http://127.0.0.1:8080/hello/Marcos || exit 1
     #  interval: 10s
@@ -16,6 +15,9 @@ services:
       DB_NAME: 'swapiapp'
       DB_USER: 'swapiapp-user'
       DB_PASSWORD: 'swapiapp-password'
+      DB_HOSTPORT: 'db:3306'
+    depends_on:
+      - db
     expose:
       - '8080'
     ports:
@@ -36,5 +38,6 @@ services:
       - '3306'
     volumes:
       - swapiapp-volume:/var/lib/mysql
+      - ./sql/configs:/etc/mysql/conf.d
 volumes:
   swapiapp-volume:
