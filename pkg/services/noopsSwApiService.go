@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 
+	"github.com/marcosArruda/swapi/pkg/models"
 	"github.com/peterhellberg/swapi"
 )
 
@@ -37,14 +38,29 @@ func (n *noOpsSwApiService) ServiceManager() ServiceManager {
 	return n.sm
 }
 
-func (n *noOpsSwApiService) GetPlanetById(ctx context.Context, id int) (*swapi.Planet, error) {
-	return &swapi.Planet{
+func (n *noOpsSwApiService) GetPlanetById(ctx context.Context, id int) (*models.Planet, error) {
+	return &models.Planet{
 		Name: "DummyPlanet",
 	}, nil
 }
 
-func (n *noOpsSwApiService) PutOnline()  {}
-func (n *noOpsSwApiService) PutOffline() {}
+func (n *noOpsSwApiService) ToPersistentPlanet(ctx context.Context, p *swapi.Planet, id int, expand bool) (*models.Planet, error) {
+	return &models.Planet{
+		Name: "DummyPlanet",
+	}, nil
+}
+func (n *noOpsSwApiService) ToPersistentFilm(ctx context.Context, f *swapi.Film, id int, expand bool) (*models.Film, error) {
+	return &models.Film{
+		Title: "DummyFilm",
+	}, nil
+}
+
+func (n *noOpsSwApiService) PutOnline() SwApiService {
+	return n
+}
+func (n *noOpsSwApiService) PutOffline() SwApiService {
+	return n
+}
 
 func (n *noOpsSwApiService) IsOnline() bool {
 	return false

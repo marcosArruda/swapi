@@ -3,7 +3,6 @@ package httpservice
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -43,34 +42,37 @@ func (n *httpServiceFinal) Start(ctx context.Context) error {
 		Handler: n.router,
 	}
 
-	return n.Close(ctx)
-}
-
-func (n *httpServiceFinal) Close(ctx context.Context) error {
-	go func() {
-		// service connections
-		n.sm.LogsService().Info(ctx, "Http Server Listening!")
-		if err := n.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen: %s\n", err.Error())
-		}
-	}()
-	quit := make(chan os.Signal)
+	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		// http interface connection
+		if err := n.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			n.sm.LogsService().Error(ctx, fmt.Sprintf("listen error: %s\n", err.Error()))
+			quit <- syscall.SIGINT
+		}
+		n.sm.LogsService().Info(ctx, "Http Server Listening!")
+	}()
+
 	<-quit
-	log.Println("shuting down server ...")
+	n.sm.LogsService().Info(ctx, "shuting down server ...")
 
 	ctxT, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	if err := n.srv.Shutdown(ctxT); err != nil {
-		log.Fatal("Something went wrong executing server shutdown: %s\n", err.Error())
+		n.sm.LogsService().Error(ctx, fmt.Sprintf("Something went wrong executing server shutdown: %s\n", err.Error()))
 	}
 
 	select {
 	case <-ctxT.Done():
-		log.Println("timed out after 2 seconds.")
+		n.sm.LogsService().Warn(ctx, "timed out after 2 seconds.")
 	}
-	log.Println("server exiting")
+	n.sm.LogsService().Warn(ctx, "server exiting")
 
+	return nil
+}
+
+func (n *httpServiceFinal) Close(ctx context.Context) error {
 	return nil
 }
 
@@ -89,19 +91,21 @@ func (n *httpServiceFinal) ServiceManager() services.ServiceManager {
 
 func (n *httpServiceFinal) GetPlanetById(c *gin.Context) {
 	id := c.Param("id")
+	n.sm.LogsService().Info(c.Request.Context(), "/planet/"+id+" Call received")
 	nId, err := strconv.Atoi(id)
 	if err != nil {
 		fmt.Printf("Endpoint for GetPlanetById expects an integer on the last block of the url. Got a '%s' instead.\n", id)
 	}
 
+	n.sm.LogsService().Info(c.Request.Context(), "Delegating to PlanetFinder to find the planet")
 	p, err := n.sm.PlanetFinderService().GetPlanetById(c.Request.Context(), nId)
 	if err != nil {
 		//TODO: parse error and return
-		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "Something went wrong"})
+		c.IndentedJSON(http.StatusNotFound, gin.H{"message": fmt.Sprintf("Something went wrong: %s", err.Error())})
 		return
 	}
+	n.sm.LogsService().Info(c.Request.Context(), fmt.Sprintf("Got the correct planet, returning it: %v", p))
 	c.IndentedJSON(http.StatusOK, p)
-
 }
 
 func (n *httpServiceFinal) SearchPlanetsByName(c *gin.Context) {

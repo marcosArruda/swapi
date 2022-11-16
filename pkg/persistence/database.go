@@ -54,28 +54,28 @@ func (n *mysqlDatabaseFinal) Start(ctx context.Context) error {
 		return err
 	}
 	sm.LogsService().Info(ctx, "Database Started!")
-	sm.LogsService().Info(ctx, "Creating Tables ...")
-	if err = n.createTablesIfNotExists(ctx); err != nil {
-		sm.LogsService().Error(ctx, "Error creating tables: "+err.Error())
-		return err
-	}
+	//sm.LogsService().Info(ctx, "Creating Tables ...")
+	//if err = n.createTablesIfNotExists(ctx); err != nil {
+	//	sm.LogsService().Error(ctx, "Error creating tables: "+err.Error())
+	//	return err
+	//}
 
-	n.InsertPlanet(ctx, &models.Planet{
-		Id:      9999,
-		Name:    "Terra",
-		Climate: "Good",
-		Terrain: "solid",
-		URL:     "http://something.com/planet/9999",
-	})
-	p, err := n.GetPlanetById(ctx, 9999)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("Planet{id: %d, name: %s, climate: %s, terrain: %s, url: %s}", p.Id, p.Name, p.Climate, p.Terrain, p.URL)
-	fmt.Println("")
-	if err = n.RemovePlanetById(ctx, 9999); err != nil {
-		return err
-	}
+	//n.InsertPlanet(ctx, &models.Planet{
+	//	Id:      9999,
+	//	Name:    "Terra",
+	//	Climate: "Good",
+	//	Terrain: "solid",
+	//	URL:     "http://something.com/planet/9999",
+	//})
+	//p, err := n.GetPlanetById(ctx, 9999)
+	//if err != nil {
+	//	return err
+	//}
+	//fmt.Printf("Planet{id: %d, name: %s, climate: %s, terrain: %s, url: %s}", p.Id, p.Name, p.Climate, p.Terrain, p.URL)
+	//fmt.Println("")
+	//if err = n.RemovePlanetById(ctx, 9999); err != nil {
+	//	return err
+	//}
 	sm.LogsService().Info(ctx, "Basic Tables Created!")
 	return nil
 }
@@ -150,7 +150,8 @@ func (n *mysqlDatabaseFinal) SearchPlanetsByName(ctx context.Context, name strin
 }
 
 func (n *mysqlDatabaseFinal) InsertPlanet(ctx context.Context, p *models.Planet) error {
-	stmt, err := n.db.PrepareContext(ctx, "INSERT INTO planet(id, name, climate, terrain, url) VALUES (?, ?, ?, ?, ?)")
+	ctx = context.Background()
+	stmt, err := n.db.PrepareContext(context.Background(), "INSERT INTO planet(id, name, climate, terrain, url) VALUES (?, ?, ?, ?, ?)")
 	if err != nil {
 		n.sm.LogsService().Error(ctx, fmt.Sprintf("Error when preparing SQL statement: %s", err.Error()))
 		return err

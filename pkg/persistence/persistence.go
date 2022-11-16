@@ -44,7 +44,7 @@ func (n *persistenceServiceFinal) ServiceManager() services.ServiceManager {
 func (n *persistenceServiceFinal) UpsertPlanet(ctx context.Context, p *models.Planet) error {
 	db := n.ServiceManager().Database()
 	pp, err := db.GetPlanetById(ctx, p.Id)
-	if err != nil {
+	if err != nil && err != messages.NoPlanetFound {
 		errCustom := &messages.PlanetError{
 			Msg: fmt.Sprintf("Error Upserting planet named '%s' with ID '%d': %s", p.Name, p.Id, err.Error())}
 		n.ServiceManager().LogsService().Error(ctx, errCustom.Msg)

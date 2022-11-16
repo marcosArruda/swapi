@@ -43,7 +43,7 @@ func (n *planetFinderServiceFinal) ServiceManager() services.ServiceManager {
 
 func (n *planetFinderServiceFinal) GetPlanetById(ctx context.Context, id int) (*models.Planet, error) {
 	p, err := n.sm.PersistenceService().GetPlanetById(ctx, id)
-	if err != nil {
+	if err != nil && err != messages.NoPlanetFound {
 		return nil, err
 	}
 	if p != nil {
@@ -51,7 +51,7 @@ func (n *planetFinderServiceFinal) GetPlanetById(ctx context.Context, id int) (*
 	}
 
 	if n.sm.SwApiService().IsOnline() {
-		outP, err := n.sm.SwApiService().GetPlanetById(ctx, id)
+		pp, err := n.sm.SwApiService().GetPlanetById(ctx, id)
 		if err != nil {
 			msg := fmt.Sprintf("System is in 'online' mode but we can't find any Planet with ID %d on the Public SW API: %s", id, err.Error())
 			n.sm.LogsService().Error(ctx, msg)
@@ -60,15 +60,13 @@ func (n *planetFinderServiceFinal) GetPlanetById(ctx context.Context, id int) (*
 				Msg:      msg,
 			}
 		}
-		pp, err := models.ToPersistentPlanet(ctx, outP, id)
-		if err != nil {
-			return nil, err
-		}
-		go func() {
+		n.sm.AsyncWorkChannel() <- func() error { //async persistence ...
 			if err = n.sm.PersistenceService().UpsertPlanet(ctx, pp); err != nil {
-				n.sm.LogsService().Error(ctx, fmt.Sprintf("persistence of planet with ID %d went wrong: %s", id, err.Error()))
+				return err
 			}
-		}()
+			return nil
+		}
+
 		return pp, nil
 	}
 	return nil, &messages.PlanetError{

@@ -58,9 +58,11 @@ type (
 		GenericService
 		WithServiceManager(sm ServiceManager) SwApiService
 		ServiceManager() ServiceManager
-		GetPlanetById(ctx context.Context, id int) (*swapi.Planet, error)
-		PutOnline()
-		PutOffline()
+		GetPlanetById(ctx context.Context, id int) (*models.Planet, error)
+		ToPersistentPlanet(ctx context.Context, p *swapi.Planet, id int, expand bool) (*models.Planet, error)
+		ToPersistentFilm(ctx context.Context, f *swapi.Film, id int, expand bool) (*models.Film, error)
+		PutOnline() SwApiService
+		PutOffline() SwApiService
 		IsOnline() bool
 	}
 
@@ -100,10 +102,13 @@ type (
 		PlanetFinderService() PlanetFinderService
 		WithHttpService(h HttpService) ServiceManager
 		HttpService() HttpService
+		AsyncWorkChannel() chan func() error
 	}
 
 	serviceManagerFinal struct {
 		logsService         LogsService
+		asyncWorkChannel    chan func() error
+		stop                chan struct{}
 		database            Database
 		persistenceService  PersistenceService
 		swApiService        SwApiService
@@ -112,9 +117,11 @@ type (
 	}
 )
 
-func NewManager(ctx context.Context) ServiceManager {
+func NewManager(ctx context.Context, asyncWorkChannel chan func() error, stop chan struct{}) ServiceManager {
 	return &serviceManagerFinal{
 		logsService:         NewNoOpsLogsService(ctx),
+		asyncWorkChannel:    asyncWorkChannel,
+		stop:                stop,
 		database:            NewNoOpsDatabase(ctx),
 		persistenceService:  NewNoOpsPersistenceService(ctx),
 		swApiService:        NewNoOpsSwService(ctx),
@@ -254,4 +261,8 @@ func (m *serviceManagerFinal) WithPlanetFinderService(p PlanetFinderService) Ser
 }
 func (m *serviceManagerFinal) PlanetFinderService() PlanetFinderService {
 	return m.planetFinderService
+}
+
+func (m *serviceManagerFinal) AsyncWorkChannel() chan func() error {
+	return m.asyncWorkChannel
 }
