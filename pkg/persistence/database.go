@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
@@ -21,10 +22,39 @@ type (
 )
 
 var (
-	version               string
-	planetCreateTable     = "CREATE TABLE IF NOT EXISTS planet (id INT PRIMARY KEY, name VARCHAR(255) NOT NULL, climate VARCHAR(50) NOT NULL,terrain VARCHAR(40), url VARCHAR(255),INDEX (name))"
-	filmCreateTable       = "CREATE TABLE IF NOT EXISTS film (id INT PRIMARY KEY, title VARCHAR(255) NOT NULL, episodeid INT NOT NULL, director VARCHAR(50) NOT NULL, created VARCHAR(40) NOT NULL, url VARCHAR(255) NOT NULL,INDEX (title))"
-	manyToManyCreateTable = "CREATE TABLE IF NOT EXISTS planet_film (filmid INT NOT NULL, planetid INT NOT NULL, INDEX (filmid, planetid))"
+	version           string
+	planetCreateTable = `CREATE TABLE IF NOT EXISTS planet (
+		id INT PRIMARY KEY,
+		name VARCHAR(255) NOT NULL,
+		climate VARCHAR(50) NOT NULL,
+		terrain VARCHAR(40),
+		url VARCHAR(255),
+		INDEX (name)
+	)`
+	filmCreateTable = `CREATE TABLE IF NOT EXISTS film (
+		id INT PRIMARY KEY,
+		title VARCHAR(255) NOT NULL,
+		episodeid INT NOT NULL,
+		director VARCHAR(50) NOT NULL,
+		created VARCHAR(40) NOT NULL,
+		url VARCHAR(255) NOT NULL,
+		INDEX (title)
+	)`
+	manyToManyCreateTable = `CREATE TABLE IF NOT EXISTS planet_film (
+		filmid INT NOT NULL,
+		planetid INT NOT NULL,
+		PRIMARY KEY(filmid,planetid),
+		FOREIGN KEY(filmid) 
+			REFERENCES film(id)
+			ON DELETE CASCADE
+		FOREIGN KEY(planetid)
+			REFERENCES planet(id)
+			ON DELETE CASCADE
+	)`
+	getFilmsFromPlanet = `SELECT f.id, f.title, f.episodeid, f.director, f.created, f.url FROM film f
+	INNER JOIN planet_film pf ON pf.filmid = f.id  
+	INNER JOIN planet p ON p.id = pf.planetid 
+		WHERE p.id = ?`
 )
 
 func NewDatabase(ctx context.Context) services.Database {
@@ -123,51 +153,99 @@ func (n *mysqlDatabaseFinal) GetPlanetById(ctx context.Context, id int) (*models
 		msg := fmt.Sprintf("Something went wrong searching locally by Planet with ID %d: %s", id, err.Error())
 		return nil, &messages.PlanetError{Msg: msg, PlanetId: id}
 	}
+	rows, err := n.db.Query(getFilmsFromPlanet, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, messages.NoPlanetFound
+		}
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var f models.Film
+		if err := rows.Scan(&f.Id, &f.Title, &f.EpisodeID, &f.Director, &f.Created, &f.URL); err != nil {
+			return nil, err
+		}
+		p.Films = append(p.Films, &f)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return p, nil
 }
 
 func (n *mysqlDatabaseFinal) SearchPlanetsByName(ctx context.Context, name string) ([]*models.Planet, error) {
-	rows, err := n.db.Query("SELECT id, name, climate, terrain, url FROM planet WHERE name LIKE '%?%'", name)
+	pRows, err := n.db.Query("SELECT id, name, climate, terrain, url FROM planet WHERE name LIKE '%?%'", name)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return services.EmptyPlanetSlice, messages.NoPlanetFound
 		}
 		return n.emptyAndNameError(name, err)
 	}
-	defer rows.Close()
+	defer pRows.Close()
 	planets := []*models.Planet{}
-	for rows.Next() {
+	for pRows.Next() {
 		var p models.Planet
-		if err := rows.Scan(&p.Id, &p.Name, &p.Climate, &p.Terrain, &p.URL); err != nil {
+		if err := pRows.Scan(&p.Id, &p.Name, &p.Climate, &p.Terrain, &p.URL); err != nil {
 			return n.emptyAndNameError(name, err)
+		}
+		fRows, err := n.db.Query(getFilmsFromPlanet, p.Id)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				return nil, messages.NoPlanetFound
+			}
+			return nil, err
+		}
+		defer fRows.Close()
+		for fRows.Next() {
+			var f models.Film
+			if err := fRows.Scan(&f.Id, &f.Title, &f.EpisodeID, &f.Director, &f.Created, &f.URL); err != nil {
+				return nil, err
+			}
+			p.Films = append(p.Films, &f)
+		}
+		if err := fRows.Err(); err != nil {
+			return nil, err
 		}
 		planets = append(planets, &p)
 	}
-	if err := rows.Err(); err != nil {
+	if err := pRows.Err(); err != nil {
 		return n.emptyAndNameError(name, err)
 	}
 	return planets, nil
 }
 
-func (n *mysqlDatabaseFinal) InsertPlanet(ctx context.Context, p *models.Planet) error {
-	ctx = context.Background()
-	stmt, err := n.db.PrepareContext(context.Background(), "INSERT INTO planet(id, name, climate, terrain, url) VALUES (?, ?, ?, ?, ?)")
+func (n *mysqlDatabaseFinal) InsertPlanet(ctx context.Context, readyToInsertPlanet *models.Planet) error {
+	txCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	tx, err := n.db.BeginTx(txCtx, nil)
+	if err != nil {
+		n.sm.LogsService().Error(txCtx, fmt.Sprintf("Error creating transaction for insertPlanet: %s", err.Error()))
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.PrepareContext(txCtx, "INSERT INTO planet(id, name, climate, terrain, url) VALUES (?, ?, ?, ?, ?)")
 	if err != nil {
 		n.sm.LogsService().Error(ctx, fmt.Sprintf("Error when preparing SQL statement: %s", err.Error()))
 		return err
 	}
 	defer stmt.Close()
-	res, err := stmt.ExecContext(ctx, p.Id, p.Name, p.Climate, p.Terrain, p.URL)
+	_, err = stmt.ExecContext(ctx, readyToInsertPlanet.Id, readyToInsertPlanet.Name, readyToInsertPlanet.Climate, readyToInsertPlanet.Terrain, readyToInsertPlanet.URL)
 	if err != nil {
-		n.sm.LogsService().Error(ctx, fmt.Sprintf("Error when inserting row into planet table: %s ", err.Error()))
+		n.sm.LogsService().Error(ctx, fmt.Sprintf("Error when inserting row into planet table: %s", err.Error()))
 		return err
 	}
-	_, err = res.RowsAffected()
-	if err != nil {
-		n.sm.LogsService().Error(ctx, fmt.Sprintf("Error when when finding rows affected: %s ", err.Error()))
+	if err := n.insertChildrenFilms(ctx, tx, readyToInsertPlanet); err != nil {
+		n.sm.LogsService().Error(ctx, fmt.Sprintf("Error when inserting planet's films: %s", err.Error()))
 		return err
 	}
-	n.sm.LogsService().Info(ctx, fmt.Sprintf("Planet Inserted! Planet ID: %d ", p.Id))
+	if err := tx.Commit(); err != nil {
+		n.sm.LogsService().Error(ctx, fmt.Sprintf("Error commiting planet insert transaction: %s", err.Error()))
+		return err
+	}
+	n.sm.LogsService().Info(ctx, fmt.Sprintf("Planet Inserted! Planet ID: %d", readyToInsertPlanet.Id))
 	return nil
 }
 
@@ -190,19 +268,85 @@ func (n *mysqlDatabaseFinal) UpdatePlanet(ctx context.Context, p *models.Planet)
 		return err
 	}
 
-	n.sm.LogsService().Info(ctx, fmt.Sprintf("Planet Inserted! Planet ID: %d ", p.Id))
+	n.sm.LogsService().Info(ctx, fmt.Sprintf("Planet Updated! Planet ID: %d ", p.Id))
 	return nil
 }
 
+func (n *mysqlDatabaseFinal) basicInsertFilm(ctx context.Context, tx *sql.Tx, f *models.Film) error {
+
+	stmt, err := tx.PrepareContext(ctx, "INSERT INTO film(id, title, episodeid, director, created, url) VALUES (?, ?, ?, ?, ?, ?)")
+	if err != nil {
+		n.sm.LogsService().Error(ctx, fmt.Sprintf("Error when preparing SQL statement: %s", err.Error()))
+		return err
+	}
+	defer stmt.Close()
+	res, err := stmt.ExecContext(ctx, f.Id, f.Title, f.EpisodeID, f.Director, f.Created, f.URL)
+	if err != nil {
+		n.sm.LogsService().Error(ctx, fmt.Sprintf("Error when inserting row into film table: %s ", err.Error()))
+		return err
+	}
+
+	_, err = res.RowsAffected()
+	if err != nil {
+		n.sm.LogsService().Error(ctx, fmt.Sprintf("Error when when finding rows affected: %s ", err.Error()))
+		return err
+	}
+	n.sm.LogsService().Info(ctx, fmt.Sprintf("Film Inserted! Film ID: %d ", f.Id))
+	return nil
+}
+
+func (n *mysqlDatabaseFinal) insertChildrenFilms(ctx context.Context, tx *sql.Tx, p *models.Planet) error {
+	var b bytes.Buffer
+	gErr := messages.PlanetError{PlanetId: p.Id}
+	for _, f := range p.Films {
+		if err := n.assertfilmPlanetRelationshipExists(ctx, tx, p, f); err != nil {
+			b.WriteString(fmt.Sprintf("[filmId: %d] Error: %s\n", f.Id, err.Error()))
+		}
+	}
+	gErr.Msg = b.String()
+	if gErr.Msg != "" {
+		return &gErr
+	}
+	return nil
+}
+
+func (n *mysqlDatabaseFinal) assertfilmPlanetRelationshipExists(ctx context.Context, tx *sql.Tx, p *models.Planet, f *models.Film) error {
+	fId, pId := 0, 0
+	err := tx.QueryRow("SELECT filmid, planetid FROM planet_film where filmid = ? AND planetid = ?", f.Id, p.Id).Scan(fId, pId)
+	if err == nil {
+		return nil
+	} else if err != sql.ErrNoRows {
+		return err
+	}
+	if !n.filmAloneExists(ctx, tx, f.Id) {
+		if err := n.basicInsertFilm(ctx, tx, f); err != nil {
+			return err
+		}
+	}
+	stmt, err := tx.PrepareContext(ctx, "INSERT INTO planet_film(filmid, planetid) VALUES (?, ?)")
+	if err != nil {
+		return err
+	}
+	if _, err = stmt.ExecContext(ctx, f.Id, p.Id); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (n *mysqlDatabaseFinal) filmAloneExists(ctx context.Context, tx *sql.Tx, idFilm int) bool {
+	var s int
+	return tx.QueryRow("SELECT id FROM film where id = ?", idFilm).Scan(s) == nil
+}
+
 func (n *mysqlDatabaseFinal) ListAllPlanets(ctx context.Context) ([]*models.Planet, error) {
-	rows, err := n.db.Query("SELECT id, name, climate, terrain, url FROM planet")
+	pRows, err := n.db.Query("SELECT id, name, climate, terrain, url FROM planet")
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return services.EmptyPlanetSlice, messages.NoPlanetFound
 		}
 		return n.emptyAndGenericError(err)
 	}
-	defer rows.Close()
+	defer pRows.Close()
 	planets := []*models.Planet{}
 	for rows.Next() {
 		var p models.Planet
@@ -223,12 +367,14 @@ func (n *mysqlDatabaseFinal) RemovePlanetById(ctx context.Context, id int) error
 		n.sm.LogsService().Error(ctx, fmt.Sprintf("Error when preparing SQL statement: %s", err.Error()))
 		return err
 	}
+
 	defer stmt.Close()
 	res, err := stmt.ExecContext(ctx, id)
 	if err != nil {
 		n.sm.LogsService().Error(ctx, fmt.Sprintf("Error when deleting planet: %s", err.Error()))
 		return err
 	}
+
 	_, err = res.RowsAffected()
 	if err != nil {
 		n.sm.LogsService().Error(ctx, fmt.Sprintf("Error when when finding rows affected: %s", err.Error()))
@@ -240,13 +386,19 @@ func (n *mysqlDatabaseFinal) RemovePlanetById(ctx context.Context, id int) error
 }
 
 func (n *mysqlDatabaseFinal) RemovePlanetByExactName(ctx context.Context, exactName string) error {
-	stmt, err := n.db.PrepareContext(ctx, "DELETE FROM planet WHERE name = ?")
+	var id int
+	if err := n.db.QueryRow("SELECT id from planet WHERE name = ?", exactName).Scan(id); err != nil {
+		if err == sql.ErrNoRows {
+			return nil
+		}
+	}
+	stmt, err := n.db.PrepareContext(ctx, "DELETE FROM planet WHERE id = ?")
 	if err != nil {
 		n.sm.LogsService().Error(ctx, fmt.Sprintf("Error when preparing SQL statement: %s", err.Error()))
 		return err
 	}
 	defer stmt.Close()
-	res, err := stmt.ExecContext(ctx, exactName)
+	res, err := stmt.ExecContext(ctx, id)
 	if err != nil {
 		n.sm.LogsService().Error(ctx, fmt.Sprintf("Error when deleting planet: %s", err.Error()))
 		return err
