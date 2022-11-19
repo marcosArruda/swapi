@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/gin-gonic/gin"
 	"github.com/marcosArruda/swapi/pkg/models"
@@ -33,10 +34,12 @@ type (
 		GenericService
 		WithServiceManager(sm ServiceManager) Database
 		ServiceManager() ServiceManager
+		BeginTransaction(ctx context.Context) (*sql.Tx, error)
+		CommitTransaction(*sql.Tx) error
 		GetPlanetById(ctx context.Context, id int) (*models.Planet, error)
 		SearchPlanetsByName(ctx context.Context, name string) ([]*models.Planet, error)
 		ListAllPlanets(ctx context.Context) ([]*models.Planet, error)
-		InsertPlanet(ctx context.Context, p *models.Planet) error
+		InsertPlanet(ctx context.Context, tx *sql.Tx, p *models.Planet) error
 		UpdatePlanet(ctx context.Context, p *models.Planet) error
 		RemovePlanetById(ctx context.Context, id int) error
 		RemovePlanetByExactName(ctx context.Context, exactName string) error

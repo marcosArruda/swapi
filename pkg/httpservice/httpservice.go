@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"regexp"
 	"strconv"
 	"syscall"
 	"time"
@@ -18,14 +19,15 @@ import (
 
 type (
 	httpServiceFinal struct {
-		sm     services.ServiceManager
-		router *gin.Engine
-		srv    *http.Server
+		sm         services.ServiceManager
+		router     *gin.Engine
+		srv        *http.Server
+		regexpRule *regexp.Regexp
 	}
 )
 
 func NewHttpService(ctx context.Context) services.HttpService {
-	return &httpServiceFinal{}
+	return &httpServiceFinal{regexpRule: regexp.MustCompile(`[^a-zA-Z0-9 ]+`)}
 }
 
 func (n *httpServiceFinal) Start(ctx context.Context) error {
@@ -33,7 +35,7 @@ func (n *httpServiceFinal) Start(ctx context.Context) error {
 	n.router = gin.Default()
 
 	n.router.GET("/planet/:id", n.GetPlanetById)
-	n.router.POST("/planet", n.SearchPlanetsByName)
+	n.router.GET("/planet", n.SearchPlanetsByName)
 	n.router.DELETE("/planet/:id", n.RemovePlanetById)
 	n.router.DELETE("/planet/name", n.RemovePlanetByExactName)
 	n.router.GET("/planets", n.ListAllPlanets)
@@ -110,13 +112,13 @@ func (n *httpServiceFinal) GetPlanetById(c *gin.Context) {
 
 func (n *httpServiceFinal) SearchPlanetsByName(c *gin.Context) {
 	n.sm.LogsService().Info(c.Request.Context(), c.FullPath()+" Call received")
-	var d models.PlanetByName
-	if err := c.ShouldBindJSON(&d); err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Error binding the received payload"})
+	search := c.DefaultQuery("search", "")
+	if search == "" {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Please, use ?search=<name> to search by name"})
 		return
 	}
-
-	p, err := n.sm.PlanetFinderService().SearchPlanetsByName(c.Request.Context(), d.Name)
+	search = n.regexpRule.ReplaceAllString(search, "")
+	p, err := n.sm.PlanetFinderService().SearchPlanetsByName(c.Request.Context(), search)
 	if err != nil {
 		//TODO: parse error and return
 		c.IndentedJSON(http.StatusNotFound, gin.H{"message": fmt.Sprintf("Error searching for Planets by name: %s", err.Error())})

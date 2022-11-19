@@ -3,6 +3,7 @@ package planetfinder
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/marcosArruda/swapi/pkg/messages"
 	"github.com/marcosArruda/swapi/pkg/models"
@@ -60,8 +61,11 @@ func (n *planetFinderServiceFinal) GetPlanetById(ctx context.Context, id int) (*
 				Msg:      msg,
 			}
 		}
+		asynContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+
 		n.sm.AsyncWorkChannel() <- func() error { //async persistence ...
-			if err = n.sm.PersistenceService().UpsertPlanet(ctx, pp); err != nil {
+			defer cancel()
+			if err = n.sm.PersistenceService().UpsertPlanet(asynContext, pp); err != nil {
 				return err
 			}
 			return nil

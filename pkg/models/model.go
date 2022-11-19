@@ -22,6 +22,11 @@ type (
 		URL        string    `json:"url"`
 	}
 
+	FilmPlanet struct {
+		FId int
+		PId int
+	}
+
 	PlanetByName struct {
 		Name string `json:"name"`
 	}

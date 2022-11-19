@@ -2,7 +2,10 @@ package swapiaccess
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -14,9 +17,10 @@ import (
 
 type (
 	swApiServiceFinal struct {
-		sm       services.ServiceManager
-		swclient *swapi.Client
-		online   bool
+		sm                   services.ServiceManager
+		swclient             *swapi.Client
+		online               bool
+		searchableHttpClient *http.Client
 	}
 )
 
@@ -74,6 +78,39 @@ func (n *swApiServiceFinal) GetFilmById(ctx context.Context, id int) (*models.Fi
 		return n.ToPersistentFilm(ctx, &f, id, true)
 	}
 	return nil, messages.SwApiIsOfflineError
+}
+
+func (n *swApiServiceFinal) SearchPlanetsByName(ctx context.Context, name string) ([]*models.Planet, error) {
+	uurl := &url.URL{
+		Scheme: "https",
+		Host:   "swapi.dev",
+	}
+	rel, err := url.Parse(fmt.Sprintf("/api/planets/?search=%s", name))
+
+	if err != nil {
+		return services.EmptyPlanetSlice, err
+	}
+	q := rel.Query()
+	q.Set("format", "json")
+	rel.RawQuery = q.Encode()
+	u := uurl.ResolveReference(rel)
+	req, err := http.NewRequest("GET", u.String(), nil)
+	if err != nil {
+		return services.EmptyPlanetSlice, err
+	}
+	req.Header.Add("User-Agent", "swapiapp.go")
+	req.Close = true
+	resp, err := n.searchableHttpClient.Do(req)
+	if err != nil {
+		return services.EmptyPlanetSlice, err
+	}
+	defer resp.Body.Close()
+
+	err = json.NewDecoder(resp.Body).Decode(v)
+	//TODO: Finish this
+
+	//return req, nil
+	return services.EmptyPlanetSlice, nil
 }
 
 func (n *swApiServiceFinal) ToPersistentPlanet(ctx context.Context, p *swapi.Planet, id int, expand bool) (*models.Planet, error) {

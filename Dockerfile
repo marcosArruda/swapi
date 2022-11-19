@@ -20,7 +20,7 @@ USER guest
 ENV DB_NAME dummy-db
 ENV DB_USER dummy-user
 ENV DB_PASSWORD dummy-password
-ENV DB_HOSTPORT dymmydb:3306
+ENV DB_HOSTPORT dummydb:3306
 
 COPY --from=build_base --chown=guest /tmp/swapi-app/out/swapi-app /app/swapi-app
 EXPOSE 8080

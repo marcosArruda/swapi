@@ -53,7 +53,16 @@ func (n *persistenceServiceFinal) UpsertPlanet(ctx context.Context, p *models.Pl
 	if pp != nil {
 		return db.UpdatePlanet(ctx, p)
 	}
-	return db.InsertPlanet(ctx, p)
+	tx, err := db.BeginTransaction(ctx)
+	if err != nil {
+		return err
+	}
+	err = db.InsertPlanet(ctx, tx, p)
+	if err != nil {
+		return err
+	}
+	tx.Commit()
+	return nil
 }
 
 func (n *persistenceServiceFinal) GetPlanetById(ctx context.Context, id int) (*models.Planet, error) {

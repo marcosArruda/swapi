@@ -2,19 +2,26 @@ package logs
 
 import (
 	"context"
-	"fmt"
+	"log"
 
 	"github.com/marcosArruda/swapi/pkg/services"
+	"go.uber.org/zap"
 )
 
 type (
 	logsServiceFinal struct {
-		sm services.ServiceManager
+		sm     services.ServiceManager
+		logger *zap.Logger
 	}
 )
 
 func NewLogsService(ctx context.Context) services.LogsService {
-	return &logsServiceFinal{}
+	logger, err := zap.NewProduction(zap.AddCallerSkip(1))
+	if err != nil {
+		log.Fatalf("can't initialize zap logger: %v", err)
+	}
+	defer logger.Sync()
+	return &logsServiceFinal{logger: logger}
 }
 
 func (f *logsServiceFinal) Start(ctx context.Context) error {
@@ -35,14 +42,18 @@ func (f *logsServiceFinal) ServiceManager() services.ServiceManager {
 	return f.sm
 }
 func (f *logsServiceFinal) Info(ctx context.Context, s string) {
-	fmt.Println("(INFO) " + s)
+	f.logger.Info(s)
+	//fmt.Println("(INFO) " + s)
 }
 func (f *logsServiceFinal) Warn(ctx context.Context, s string) {
-	fmt.Println("(WARN) " + s)
+	f.logger.Warn(s)
+	//fmt.Println("(WARN) " + s)
 }
 func (f *logsServiceFinal) Error(ctx context.Context, s string) {
-	fmt.Println("(ERROR) " + s)
+	f.logger.Error(s)
+	//fmt.Println("(ERROR) " + s)
 }
 func (f *logsServiceFinal) Debug(ctx context.Context, s string) {
-	fmt.Println("(DEBUG) " + s)
+	f.logger.Debug(s)
+	//fmt.Println("(DEBUG) " + s)
 }
