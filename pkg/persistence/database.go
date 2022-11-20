@@ -65,7 +65,7 @@ var (
 		WHERE p.id = ?`
 )
 
-func NewDatabase(ctx context.Context) services.Database {
+func NewDatabase() services.Database {
 	return &mysqlDatabaseFinal{}
 }
 
@@ -345,9 +345,7 @@ func (n *mysqlDatabaseFinal) assertfilmPlanetRelationshipExists(ctx context.Cont
 	err := tx.QueryRowContext(ctx, "SELECT filmid, planetid FROM planet_film where filmid = ? AND planetid = ?", f.Id, p.Id).Scan(&t.FId, &t.PId)
 	if err == sql.ErrNoRows {
 		if !n.filmAloneExists(ctx, tx, f.Id) {
-			fmt.Println("Filme nao existe! INSERINDO ELE!")
 			if err := n.basicInsertFilm(ctx, tx, f); err != nil {
-				fmt.Println("ERRO INSERINDO O FILME! MERDA ANTES!")
 				return err
 			}
 		}
@@ -356,7 +354,6 @@ func (n *mysqlDatabaseFinal) assertfilmPlanetRelationshipExists(ctx context.Cont
 			return err
 		}
 		if _, err = stmt.ExecContext(ctx, f.Id, p.Id); err != nil {
-			fmt.Println("AQUI ACONTECEU O ERRO!!!! FDP!")
 			return err
 		}
 	}

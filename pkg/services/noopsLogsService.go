@@ -10,7 +10,7 @@ type (
 	}
 )
 
-func NewNoOpsLogsService(ctx context.Context) LogsService {
+func NewNoOpsLogsService() LogsService {
 	return &noOpsLogsService{}
 }
 

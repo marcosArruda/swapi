@@ -18,13 +18,13 @@ func main() {
 	asyncWorkChannel := make(chan func() error)
 	stop := make(chan struct{})
 
-	sm := services.NewManager(ctx, asyncWorkChannel, stop).
-		WithLogsService(logs.NewLogsService(ctx)).
-		WithDatabase(persistence.NewDatabase(ctx)).
-		WithPersistenceService(persistence.NewPersistenceService(ctx)).
-		WithSwApiService(swapiaccess.NewSwService(ctx).PutOnline()).
-		WithPlanetFinderService(planetfinder.NewPlanetFinderService(ctx)).
-		WithHttpService(httpservice.NewHttpService(ctx))
+	sm := services.NewManager(asyncWorkChannel, stop).
+		WithLogsService(logs.NewLogsService()).
+		WithDatabase(persistence.NewDatabase()).
+		WithPersistenceService(persistence.NewPersistenceService()).
+		WithSwApiService(swapiaccess.NewSwService().PutOnline()).
+		WithPlanetFinderService(planetfinder.NewPlanetFinderService()).
+		WithHttpService(httpservice.NewHttpService())
 
 	// This is the goroutine that will execute any async work
 	go func() {

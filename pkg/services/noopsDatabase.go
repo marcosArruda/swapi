@@ -13,7 +13,7 @@ type (
 	}
 )
 
-func NewNoOpsDatabase(ctx context.Context) Database {
+func NewNoOpsDatabase() Database {
 	return &noOpsDatabase{}
 }
 

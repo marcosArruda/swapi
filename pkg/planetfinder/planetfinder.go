@@ -21,7 +21,7 @@ var (
 	PlanetNameTagLabel PlanetNameTag = "PlanetNameTag"
 )
 
-func NewPlanetFinderService(ctx context.Context) services.PlanetFinderService {
+func NewPlanetFinderService() services.PlanetFinderService {
 	return &planetFinderServiceFinal{}
 }
 

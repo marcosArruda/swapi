@@ -12,7 +12,7 @@ type (
 	}
 )
 
-func NewNoOpsHttpService(ctx context.Context) HttpService {
+func NewNoOpsHttpService() HttpService {
 	return &noOpsHttpService{}
 }
 

@@ -15,7 +15,7 @@ type (
 	}
 )
 
-func NewPersistenceService(ctx context.Context) services.PersistenceService {
+func NewPersistenceService() services.PersistenceService {
 	return &persistenceServiceFinal{}
 }
 

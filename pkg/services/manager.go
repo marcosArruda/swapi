@@ -122,16 +122,16 @@ type (
 	}
 )
 
-func NewManager(ctx context.Context, asyncWorkChannel chan func() error, stop chan struct{}) ServiceManager {
+func NewManager(asyncWorkChannel chan func() error, stop chan struct{}) ServiceManager {
 	return &serviceManagerFinal{
-		logsService:         NewNoOpsLogsService(ctx),
+		logsService:         NewNoOpsLogsService(),
 		asyncWorkChannel:    asyncWorkChannel,
 		stop:                stop,
-		database:            NewNoOpsDatabase(ctx),
-		persistenceService:  NewNoOpsPersistenceService(ctx),
-		swApiService:        NewNoOpsSwService(ctx),
-		planetFinderService: NewNoOpsPlanetFinderService(ctx),
-		httpService:         NewNoOpsHttpService(ctx),
+		database:            NewNoOpsDatabase(),
+		persistenceService:  NewNoOpsPersistenceService(),
+		swApiService:        NewNoOpsSwService(),
+		planetFinderService: NewNoOpsPlanetFinderService(),
+		httpService:         NewNoOpsHttpService(),
 	}
 }
 

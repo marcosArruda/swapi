@@ -12,7 +12,7 @@ type (
 	}
 )
 
-func NewNoOpsPlanetFinderService(ctx context.Context) PlanetFinderService {
+func NewNoOpsPlanetFinderService() PlanetFinderService {
 	return &noOpsPlanetFinderService{}
 }
 

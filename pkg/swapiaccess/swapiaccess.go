@@ -25,7 +25,7 @@ type (
 	}
 )
 
-func NewSwService(ctx context.Context) services.SwApiService {
+func NewSwService() services.SwApiService {
 	return &swApiServiceFinal{swclient: swapi.DefaultClient, searchableHttpClient: http.DefaultClient}
 }
 

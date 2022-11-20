@@ -12,7 +12,7 @@ type (
 	}
 )
 
-func NewNoOpsPersistenceService(ctx context.Context) PersistenceService {
+func NewNoOpsPersistenceService() PersistenceService {
 	return &noOpsPersistenceService{}
 }
 

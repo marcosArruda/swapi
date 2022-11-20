@@ -25,7 +25,7 @@ type (
 	}
 )
 
-func NewHttpService(ctx context.Context) services.HttpService {
+func NewHttpService() services.HttpService {
 	return &httpServiceFinal{regexpRule: regexp.MustCompile(`[^a-zA-Z0-9 ]+`)}
 }
 

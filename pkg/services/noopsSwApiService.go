@@ -13,7 +13,7 @@ type (
 	}
 )
 
-func NewNoOpsSwService(ctx context.Context) SwApiService {
+func NewNoOpsSwService() SwApiService {
 	return &noOpsSwApiService{}
 }
 
