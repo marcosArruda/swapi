@@ -11,9 +11,14 @@ import (
 )
 
 type (
+	PlanetNameTag            string
 	planetFinderServiceFinal struct {
 		sm services.ServiceManager
 	}
+)
+
+var (
+	PlanetNameTagLabel PlanetNameTag = "PlanetNameTag"
 )
 
 func NewPlanetFinderService(ctx context.Context) services.PlanetFinderService {
@@ -80,9 +85,19 @@ func (n *planetFinderServiceFinal) GetPlanetById(ctx context.Context, id int) (*
 }
 
 func (n *planetFinderServiceFinal) SearchPlanetsByName(ctx context.Context, name string) ([]*models.Planet, error) {
-	ps, err := n.sm.PersistenceService().SearchPlanetsByName(ctx, name)
+	ps, err := n.sm.SwApiService().SearchPlanetsByName(ctx, name)
 	if err != nil {
 		return services.EmptyPlanetSlice, err
+	}
+
+	for _, pp := range ps {
+		asynContext := context.WithValue(context.Background(), PlanetNameTagLabel, pp.Name)
+		n.sm.AsyncWorkChannel() <- func() error { //async persistence ...
+			if err = n.sm.PersistenceService().UpsertPlanet(asynContext, pp); err != nil {
+				return err
+			}
+			return nil
+		}
 	}
 	return ps, nil
 }

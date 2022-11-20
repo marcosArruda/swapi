@@ -11,7 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/marcosArruda/swapi/pkg/models"
 	"github.com/marcosArruda/swapi/pkg/services"
 
 	"github.com/gin-gonic/gin"
@@ -37,7 +36,7 @@ func (n *httpServiceFinal) Start(ctx context.Context) error {
 	n.router.GET("/planet/:id", n.GetPlanetById)
 	n.router.GET("/planet", n.SearchPlanetsByName)
 	n.router.DELETE("/planet/:id", n.RemovePlanetById)
-	n.router.DELETE("/planet/name", n.RemovePlanetByExactName)
+	n.router.DELETE("/planet", n.RemovePlanetByExactName)
 	n.router.GET("/planets", n.ListAllPlanets)
 	n.srv = &http.Server{
 		Addr:    ":8080",
@@ -118,14 +117,14 @@ func (n *httpServiceFinal) SearchPlanetsByName(c *gin.Context) {
 		return
 	}
 	search = n.regexpRule.ReplaceAllString(search, "")
-	p, err := n.sm.PlanetFinderService().SearchPlanetsByName(c.Request.Context(), search)
+	ps, err := n.sm.PlanetFinderService().SearchPlanetsByName(c.Request.Context(), search)
 	if err != nil {
 		//TODO: parse error and return
 		c.IndentedJSON(http.StatusNotFound, gin.H{"message": fmt.Sprintf("Error searching for Planets by name: %s", err.Error())})
 		return
 	}
 
-	c.IndentedJSON(http.StatusOK, p)
+	c.IndentedJSON(http.StatusOK, ps)
 }
 
 func (n *httpServiceFinal) ListAllPlanets(c *gin.Context) {
@@ -158,16 +157,17 @@ func (n *httpServiceFinal) RemovePlanetById(c *gin.Context) {
 
 func (n *httpServiceFinal) RemovePlanetByExactName(c *gin.Context) {
 	n.sm.LogsService().Info(c.Request.Context(), c.FullPath()+" Call received")
-	var d models.PlanetByExactName
-	if err := c.ShouldBindJSON(&d); err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Error binding the received payload"})
+	name := c.DefaultQuery("name", "")
+	if name == "" {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Please, use ?name=<name> to delete by name"})
 		return
 	}
+	name = n.regexpRule.ReplaceAllString(name, "")
 
-	if err := n.sm.PlanetFinderService().RemovePlanetByExactName(c.Request.Context(), d.Name); err != nil {
+	if err := n.sm.PlanetFinderService().RemovePlanetByExactName(c.Request.Context(), name); err != nil {
 		//TODO: parse error and return
-		c.IndentedJSON(http.StatusNotFound, gin.H{"message": fmt.Sprintf("Error removing planet by exact name: %s", err.Error())})
+		c.IndentedJSON(http.StatusNotFound, gin.H{"message": fmt.Sprintf("Error removing planet with exact name '%s': %s", name, err.Error())})
 		return
 	}
-	c.IndentedJSON(http.StatusAccepted, gin.H{"message": fmt.Sprintf("Removed Planet with exact name '%s'", d.Name)})
+	c.IndentedJSON(http.StatusAccepted, gin.H{"message": fmt.Sprintf("Removed Planet with exact name '%s'", name)})
 }

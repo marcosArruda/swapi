@@ -167,6 +167,10 @@ func (n *mysqlDatabaseFinal) CommitTransaction(tx *sql.Tx) error {
 	return tx.Commit()
 }
 
+func (n *mysqlDatabaseFinal) RollbackTransaction(tx *sql.Tx) error {
+	return tx.Rollback()
+}
+
 func (n *mysqlDatabaseFinal) GetPlanetById(ctx context.Context, id int) (*models.Planet, error) {
 	p := &models.Planet{}
 	err := n.db.QueryRow("SELECT id, name, climate, terrain, url FROM planet WHERE id = ?", id).Scan(&p.Id, &p.Name, &p.Climate, &p.Terrain, &p.URL)
@@ -363,8 +367,6 @@ func (n *mysqlDatabaseFinal) filmAloneExists(ctx context.Context, tx *sql.Tx, id
 	t := models.FilmPlanet{}
 	err := tx.QueryRowContext(ctx, "SELECT id FROM film where id = ?", idFilm).Scan(&t.FId)
 	if err != nil {
-		fmt.Printf("idFilm: %d, FUCKING ERROR BADAROSKA: %s", idFilm, err.Error())
-		fmt.Println("")
 		if err == sql.ErrNoRows {
 			return false
 		} else {
@@ -401,8 +403,8 @@ func (n *mysqlDatabaseFinal) ListAllPlanets(ctx context.Context) ([]*models.Plan
 	return planets, nil
 }
 
-func (n *mysqlDatabaseFinal) RemovePlanetById(ctx context.Context, id int) error {
-	stmt, err := n.db.PrepareContext(ctx, "DELETE FROM planet WHERE id = ?")
+func (n *mysqlDatabaseFinal) RemovePlanetById(ctx context.Context, tx *sql.Tx, id int) error {
+	stmt, err := tx.PrepareContext(ctx, "DELETE FROM planet WHERE id = ?")
 	if err != nil {
 		n.sm.LogsService().Error(ctx, fmt.Sprintf("Error when preparing SQL statement: %s", err.Error()))
 		return err
@@ -425,14 +427,14 @@ func (n *mysqlDatabaseFinal) RemovePlanetById(ctx context.Context, id int) error
 	return nil
 }
 
-func (n *mysqlDatabaseFinal) RemovePlanetByExactName(ctx context.Context, exactName string) error {
+func (n *mysqlDatabaseFinal) RemovePlanetByExactName(ctx context.Context, tx *sql.Tx, exactName string) error {
 	var id int
-	if err := n.db.QueryRow("SELECT id from planet WHERE name = ?", exactName).Scan(id); err != nil {
+	if err := tx.QueryRow("SELECT id from planet WHERE name = ?", exactName).Scan(id); err != nil {
 		if err == sql.ErrNoRows {
 			return nil
 		}
 	}
-	stmt, err := n.db.PrepareContext(ctx, "DELETE FROM planet WHERE id = ?")
+	stmt, err := tx.PrepareContext(ctx, "DELETE FROM planet WHERE id = ?")
 	if err != nil {
 		n.sm.LogsService().Error(ctx, fmt.Sprintf("Error when preparing SQL statement: %s", err.Error()))
 		return err

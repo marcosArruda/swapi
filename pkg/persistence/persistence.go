@@ -43,12 +43,13 @@ func (n *persistenceServiceFinal) ServiceManager() services.ServiceManager {
 
 func (n *persistenceServiceFinal) UpsertPlanet(ctx context.Context, p *models.Planet) error {
 	db := n.ServiceManager().Database()
+	n.sm.LogsService().Info(ctx, fmt.Sprintf("Upserting planet {id: %d, name: %s}", p.Id, p.Name))
 	pp, err := db.GetPlanetById(ctx, p.Id)
 	if err != nil && err != messages.NoPlanetFound {
 		errCustom := &messages.PlanetError{
 			Msg: fmt.Sprintf("Error Upserting planet named '%s' with ID '%d': %s", p.Name, p.Id, err.Error())}
 		n.ServiceManager().LogsService().Error(ctx, errCustom.Msg)
-		return err
+		return errCustom
 	}
 	if pp != nil {
 		return db.UpdatePlanet(ctx, p)
@@ -78,9 +79,55 @@ func (n *persistenceServiceFinal) ListAllPlanets(ctx context.Context) ([]*models
 }
 
 func (n *persistenceServiceFinal) RemovePlanetById(ctx context.Context, id int) error {
-	return n.sm.Database().RemovePlanetById(ctx, id)
+	db := n.ServiceManager().Database()
+	p, err := db.GetPlanetById(ctx, id)
+	if err != nil && err != messages.NoPlanetFound {
+		errCustom := &messages.PlanetError{
+			Msg: fmt.Sprintf("Error Removing planet named with ID '%d': %s", p.Id, err.Error())}
+		n.ServiceManager().LogsService().Error(ctx, errCustom.Msg)
+		return errCustom
+	} else if err == messages.NoPlanetFound {
+		n.ServiceManager().LogsService().Info(ctx, fmt.Sprintf("Planet with ID '%d' are not yet in the local database. Please Load it with GET /planet/%d first!", id, id))
+		return nil
+	}
+	tx, err := db.BeginTransaction(ctx)
+	defer db.CommitTransaction(tx)
+	if err != nil {
+		n.ServiceManager().LogsService().Error(ctx, fmt.Sprintf("Error opening transaction for removing the planet with ID '%d': %s", id, err))
+		db.RollbackTransaction(tx)
+		return err
+	}
+	if err = n.sm.Database().RemovePlanetById(ctx, tx, id); err != nil {
+		n.ServiceManager().LogsService().Error(ctx, fmt.Sprintf("Error Deleting Planet with ID '%d': %s", id, err))
+		db.RollbackTransaction(tx)
+		return err
+	}
+	return nil
 }
 
 func (n *persistenceServiceFinal) RemovePlanetByExactName(ctx context.Context, exactName string) error {
+	db := n.ServiceManager().Database()
+	p, err := db.SearchPlanetsByName(ctx, exactName)
+	if err != nil && err != messages.NoPlanetFound {
+		errCustom := &messages.PlanetError{
+			Msg: fmt.Sprintf("Error Removing planet named with name '%s': %s", exactName, err.Error())}
+		n.ServiceManager().LogsService().Error(ctx, errCustom.Msg)
+		return errCustom
+	} else if err == messages.NoPlanetFound {
+		n.ServiceManager().LogsService().Info(ctx, fmt.Sprintf("No planet found with name '%s'", exactName))
+		return nil
+	}
+	tx, err := db.BeginTransaction(ctx)
+	defer db.CommitTransaction(tx)
+	if err != nil {
+		n.ServiceManager().LogsService().Error(ctx, fmt.Sprintf("Error opening transaction for removing the planet with name '%s': %s", exactName, err.Error()))
+		db.RollbackTransaction(tx)
+		return err
+	}
+	if err = n.sm.Database().RemovePlanetById(ctx, tx, p[0].Id); err != nil {
+		n.ServiceManager().LogsService().Error(ctx, fmt.Sprintf("Error Deleting Planet with name '%s': %s", exactName, err.Error()))
+		db.RollbackTransaction(tx)
+		return err
+	}
 	return nil
 }

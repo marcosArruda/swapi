@@ -35,14 +35,15 @@ type (
 		WithServiceManager(sm ServiceManager) Database
 		ServiceManager() ServiceManager
 		BeginTransaction(ctx context.Context) (*sql.Tx, error)
-		CommitTransaction(*sql.Tx) error
+		CommitTransaction(tx *sql.Tx) error
+		RollbackTransaction(tx *sql.Tx) error
 		GetPlanetById(ctx context.Context, id int) (*models.Planet, error)
 		SearchPlanetsByName(ctx context.Context, name string) ([]*models.Planet, error)
 		ListAllPlanets(ctx context.Context) ([]*models.Planet, error)
 		InsertPlanet(ctx context.Context, tx *sql.Tx, p *models.Planet) error
 		UpdatePlanet(ctx context.Context, p *models.Planet) error
-		RemovePlanetById(ctx context.Context, id int) error
-		RemovePlanetByExactName(ctx context.Context, exactName string) error
+		RemovePlanetById(ctx context.Context, tx *sql.Tx, id int) error
+		RemovePlanetByExactName(ctx context.Context, tx *sql.Tx, exactName string) error
 	}
 
 	PersistenceService interface {
@@ -62,6 +63,7 @@ type (
 		WithServiceManager(sm ServiceManager) SwApiService
 		ServiceManager() ServiceManager
 		GetPlanetById(ctx context.Context, id int) (*models.Planet, error)
+		SearchPlanetsByName(ctx context.Context, name string) ([]*models.Planet, error)
 		ToPersistentPlanet(ctx context.Context, p *swapi.Planet, id int, expand bool) (*models.Planet, error)
 		ToPersistentFilm(ctx context.Context, f *swapi.Film, id int, expand bool) (*models.Film, error)
 		PutOnline() SwApiService

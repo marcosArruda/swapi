@@ -1,0 +1,191 @@
+{
+	"count": 13,
+	"next": "https://swapi.dev/api/planets/?search=h&page=2",
+	"previous": null,
+	"results": [
+		{
+			"name": "Hoth",
+			"rotation_period": "23",
+			"orbital_period": "549",
+			"diameter": "7200",
+			"climate": "frozen",
+			"gravity": "1.1 standard",
+			"terrain": "tundra, ice caves, mountain ranges",
+			"surface_water": "100",
+			"population": "unknown",
+			"residents": [],
+			"films": [
+				"https://swapi.dev/api/films/2/"
+			],
+			"created": "2014-12-10T11:39:13.934000Z",
+			"edited": "2014-12-20T20:58:18.423000Z",
+			"url": "https://swapi.dev/api/planets/4/"
+		},
+		{
+			"name": "Dagobah",
+			"rotation_period": "23",
+			"orbital_period": "341",
+			"diameter": "8900",
+			"climate": "murky",
+			"gravity": "N/A",
+			"terrain": "swamp, jungles",
+			"surface_water": "8",
+			"population": "unknown",
+			"residents": [],
+			"films": [
+				"https://swapi.dev/api/films/2/",
+				"https://swapi.dev/api/films/3/",
+				"https://swapi.dev/api/films/6/"
+			],
+			"created": "2014-12-10T11:42:22.590000Z",
+			"edited": "2014-12-20T20:58:18.425000Z",
+			"url": "https://swapi.dev/api/planets/5/"
+		},
+		{
+			"name": "Kashyyyk",
+			"rotation_period": "26",
+			"orbital_period": "381",
+			"diameter": "12765",
+			"climate": "tropical",
+			"gravity": "1 standard",
+			"terrain": "jungle, forests, lakes, rivers",
+			"surface_water": "60",
+			"population": "45000000",
+			"residents": [
+				"https://swapi.dev/api/people/13/",
+				"https://swapi.dev/api/people/80/"
+			],
+			"films": [
+				"https://swapi.dev/api/films/6/"
+			],
+			"created": "2014-12-10T13:32:00.124000Z",
+			"edited": "2014-12-20T20:58:18.442000Z",
+			"url": "https://swapi.dev/api/planets/14/"
+		},
+		{
+			"name": "Nal Hutta",
+			"rotation_period": "87",
+			"orbital_period": "413",
+			"diameter": "12150",
+			"climate": "temperate",
+			"gravity": "1 standard",
+			"terrain": "urban, oceans, swamps, bogs",
+			"surface_water": "unknown",
+			"population": "7000000000",
+			"residents": [
+				"https://swapi.dev/api/people/16/"
+			],
+			"films": [],
+			"created": "2014-12-10T17:11:29.452000Z",
+			"edited": "2014-12-20T20:58:18.460000Z",
+			"url": "https://swapi.dev/api/planets/24/"
+		},
+		{
+			"name": "Trandosha",
+			"rotation_period": "25",
+			"orbital_period": "371",
+			"diameter": "0",
+			"climate": "arid",
+			"gravity": "0.62 standard",
+			"terrain": "mountains, seas, grasslands, deserts",
+			"surface_water": "unknown",
+			"population": "42000000",
+			"residents": [
+				"https://swapi.dev/api/people/24/"
+			],
+			"films": [],
+			"created": "2014-12-15T12:53:47.695000Z",
+			"edited": "2014-12-20T20:58:18.468000Z",
+			"url": "https://swapi.dev/api/planets/29/"
+		},
+		{
+			"name": "Chandrila",
+			"rotation_period": "20",
+			"orbital_period": "368",
+			"diameter": "13500",
+			"climate": "temperate",
+			"gravity": "1",
+			"terrain": "plains, forests",
+			"surface_water": "40",
+			"population": "1200000000",
+			"residents": [
+				"https://swapi.dev/api/people/28/"
+			],
+			"films": [],
+			"created": "2014-12-18T11:11:51.872000Z",
+			"edited": "2014-12-20T20:58:18.472000Z",
+			"url": "https://swapi.dev/api/planets/32/"
+		},
+		{
+			"name": "Dathomir",
+			"rotation_period": "24",
+			"orbital_period": "491",
+			"diameter": "10480",
+			"climate": "temperate",
+			"gravity": "0.9",
+			"terrain": "forests, deserts, savannas",
+			"surface_water": "unknown",
+			"population": "5200",
+			"residents": [
+				"https://swapi.dev/api/people/44/"
+			],
+			"films": [],
+			"created": "2014-12-19T18:00:40.142000Z",
+			"edited": "2014-12-20T20:58:18.480000Z",
+			"url": "https://swapi.dev/api/planets/36/"
+		},
+		{
+			"name": "Ryloth",
+			"rotation_period": "30",
+			"orbital_period": "305",
+			"diameter": "10600",
+			"climate": "temperate, arid, subartic",
+			"gravity": "1",
+			"terrain": "mountains, valleys, deserts, tundra",
+			"surface_water": "5",
+			"population": "1500000000",
+			"residents": [
+				"https://swapi.dev/api/people/45/",
+				"https://swapi.dev/api/people/46/"
+			],
+			"films": [],
+			"created": "2014-12-20T09:46:25.740000Z",
+			"edited": "2014-12-20T20:58:18.481000Z",
+			"url": "https://swapi.dev/api/planets/37/"
+		},
+		{
+			"name": "Haruun Kal",
+			"rotation_period": "25",
+			"orbital_period": "383",
+			"diameter": "10120",
+			"climate": "temperate",
+			"gravity": "0.98",
+			"terrain": "toxic cloudsea, plateaus, volcanoes",
+			"surface_water": "unknown",
+			"population": "705300",
+			"residents": [
+				"https://swapi.dev/api/people/51/"
+			],
+			"films": [],
+			"created": "2014-12-20T10:12:28.980000Z",
+			"edited": "2014-12-20T20:58:18.491000Z",
+			"url": "https://swapi.dev/api/planets/42/"
+		},
+		{
+			"name": "Tholoth",
+			"rotation_period": "unknown",
+			"orbital_period": "unknown",
+			"diameter": "unknown",
+			"climate": "unknown",
+			"gravity": "unknown",
+			"terrain": "unknown",
+			"surface_water": "unknown",
+			"population": "unknown",
+			"residents": [],
+			"films": [],
+			"created": "2014-12-20T10:28:31.117000Z",
+			"edited": "2014-12-20T20:58:18.498000Z",
+			"url": "https://swapi.dev/api/planets/46/"
+		}
+	]
+}

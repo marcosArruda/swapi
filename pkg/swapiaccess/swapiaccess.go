@@ -25,7 +25,7 @@ type (
 )
 
 func NewSwService(ctx context.Context) services.SwApiService {
-	return &swApiServiceFinal{swclient: swapi.DefaultClient}
+	return &swApiServiceFinal{swclient: swapi.DefaultClient, searchableHttpClient: http.DefaultClient}
 }
 
 func (n *swApiServiceFinal) Start(ctx context.Context) error {
@@ -81,36 +81,49 @@ func (n *swApiServiceFinal) GetFilmById(ctx context.Context, id int) (*models.Fi
 }
 
 func (n *swApiServiceFinal) SearchPlanetsByName(ctx context.Context, name string) ([]*models.Planet, error) {
-	uurl := &url.URL{
-		Scheme: "https",
-		Host:   "swapi.dev",
-	}
-	rel, err := url.Parse(fmt.Sprintf("/api/planets/?search=%s", name))
+	r := &models.SwApiPlanetsByNameResult{Next: fmt.Sprintf("https://swapi.dev/api/planets/?search=%s", name)}
+	ps := []*models.Planet{}
+	for r.Next != "" {
+		rel, err := url.Parse(r.Next)
+		if err != nil {
+			return services.EmptyPlanetSlice, err
+		}
+		q := rel.Query()
+		q.Set("format", "json")
+		rel.RawQuery = q.Encode()
+		req, err := http.NewRequest("GET", rel.String(), nil)
+		if err != nil {
+			return services.EmptyPlanetSlice, err
+		}
+		req.Header.Add("User-Agent", "swapiapp.go")
+		req.Close = true
+		n.sm.LogsService().Info(ctx, fmt.Sprintf("Calling r.Next -> %s", r.Next))
+		resp, err := n.searchableHttpClient.Do(req)
+		if err != nil {
+			return services.EmptyPlanetSlice, err
+		}
+		defer resp.Body.Close()
+		n.sm.LogsService().Info(ctx, fmt.Sprintf("Got %d total results from r.Next (%s)", r.Count, r.Next))
+		r.Next = "" //zeroing the Next to avoid infinite loop
+		if err = json.NewDecoder(resp.Body).Decode(r); err != nil {
+			return services.EmptyPlanetSlice, err
+		}
+		n.sm.LogsService().Info(ctx, fmt.Sprintf("Decoding for r.Next (%s) worked!", r.Next))
+		for _, rr := range r.Results {
+			n.sm.LogsService().Info(ctx, fmt.Sprintf("Converting '%s' to persistent", rr.Name))
+			pp, err := n.ToPersistentPlanet(ctx, rr, 0, true)
+			if err != nil {
+				return services.EmptyPlanetSlice, err
+			}
+			ps = append(ps, pp)
+		}
 
-	if err != nil {
-		return services.EmptyPlanetSlice, err
 	}
-	q := rel.Query()
-	q.Set("format", "json")
-	rel.RawQuery = q.Encode()
-	u := uurl.ResolveReference(rel)
-	req, err := http.NewRequest("GET", u.String(), nil)
-	if err != nil {
-		return services.EmptyPlanetSlice, err
+	for _, v := range ps {
+		fmt.Printf("planet {id: %d, name: %s}", v.Id, v.Name)
+		fmt.Println("")
 	}
-	req.Header.Add("User-Agent", "swapiapp.go")
-	req.Close = true
-	resp, err := n.searchableHttpClient.Do(req)
-	if err != nil {
-		return services.EmptyPlanetSlice, err
-	}
-	defer resp.Body.Close()
-
-	err = json.NewDecoder(resp.Body).Decode(v)
-	//TODO: Finish this
-
-	//return req, nil
-	return services.EmptyPlanetSlice, nil
+	return ps, nil
 }
 
 func (n *swApiServiceFinal) ToPersistentPlanet(ctx context.Context, p *swapi.Planet, id int, expand bool) (*models.Planet, error) {
@@ -125,14 +138,17 @@ func (n *swApiServiceFinal) ToPersistentPlanet(ctx context.Context, p *swapi.Pla
 	if id < 1 {
 		s := strings.Split(p.URL, "/")
 		idTmp, err := strconv.Atoi(s[len(s)-2])
+
 		if err != nil {
 			return nil, &messages.PlanetError{
 				Msg: fmt.Sprintf("Could not discover the planet named '%s' respective ID from the payload", p.Name)}
 		}
+		n.sm.LogsService().Info(ctx, fmt.Sprintf("id for planet '%s' is %d and it have %d films", p.Name, idTmp, len(p.FilmURLs)))
 		pp.Id = idTmp
-		return pp, nil
+	} else {
+		pp.Id = id
 	}
-	pp.Id = id
+
 	if expand {
 		pp = n.fillFilmsFromPlanet(ctx, pp)
 	}
@@ -141,6 +157,7 @@ func (n *swApiServiceFinal) ToPersistentPlanet(ctx context.Context, p *swapi.Pla
 
 func (n *swApiServiceFinal) fillFilmsFromPlanet(ctx context.Context, p *models.Planet) *models.Planet {
 	if p.FilmURLs != nil && len(p.FilmURLs) > 0 {
+		n.sm.LogsService().Info(ctx, fmt.Sprintf("Planet '%s' have %d films, expanding them ..", p.Name, len(p.FilmURLs)))
 		for _, fUrl := range p.FilmURLs {
 			s := strings.Split(fUrl, "/")
 			idTmp, err := strconv.Atoi(s[len(s)-2])

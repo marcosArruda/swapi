@@ -45,6 +45,10 @@ func (n *noOpsDatabase) CommitTransaction(tx *sql.Tx) error {
 	return nil
 }
 
+func (n *noOpsDatabase) RollbackTransaction(tx *sql.Tx) error {
+	return nil
+}
+
 func (n *noOpsDatabase) GetPlanetById(ctx context.Context, id int) (*models.Planet, error) {
 	return nil, nil
 }
@@ -65,10 +69,10 @@ func (n *noOpsDatabase) ListAllPlanets(ctx context.Context) ([]*models.Planet, e
 	return EmptyPlanetSlice, nil
 }
 
-func (n *noOpsDatabase) RemovePlanetById(ctx context.Context, id int) error {
+func (n *noOpsDatabase) RemovePlanetById(ctx context.Context, tx *sql.Tx, id int) error {
 	return nil
 }
 
-func (n *noOpsDatabase) RemovePlanetByExactName(ctx context.Context, exactName string) error {
+func (n *noOpsDatabase) RemovePlanetByExactName(ctx context.Context, tx *sql.Tx, exactName string) error {
 	return nil
 }

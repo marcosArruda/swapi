@@ -1,5 +1,7 @@
 package models
 
+import "github.com/peterhellberg/swapi"
+
 type (
 	Planet struct {
 		Id       int      `json:"id"`
@@ -20,6 +22,12 @@ type (
 		Planets    []*Planet `json:"planets"`
 		Created    string    `json:"created"`
 		URL        string    `json:"url"`
+	}
+
+	SwApiPlanetsByNameResult struct {
+		Count   int             `json:"count"`
+		Next    string          `json:"next"`
+		Results []*swapi.Planet `json:"results"`
 	}
 
 	FilmPlanet struct {

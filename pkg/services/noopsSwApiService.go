@@ -44,6 +44,10 @@ func (n *noOpsSwApiService) GetPlanetById(ctx context.Context, id int) (*models.
 	}, nil
 }
 
+func (n *noOpsSwApiService) SearchPlanetsByName(ctx context.Context, name string) ([]*models.Planet, error) {
+	return EmptyPlanetSlice, nil
+}
+
 func (n *noOpsSwApiService) ToPersistentPlanet(ctx context.Context, p *swapi.Planet, id int, expand bool) (*models.Planet, error) {
 	return &models.Planet{
 		Name: "DummyPlanet",

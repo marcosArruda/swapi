@@ -15,7 +15,7 @@ import (
 func main() {
 	ctx := context.Background()
 	//time.Sleep(5 * time.Second)
-	asyncWorkChannel := make(chan func() error, 3)
+	asyncWorkChannel := make(chan func() error)
 	stop := make(chan struct{})
 
 	sm := services.NewManager(ctx, asyncWorkChannel, stop).
