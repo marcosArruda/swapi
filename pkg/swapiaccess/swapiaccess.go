@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/marcosArruda/swapi/pkg/messages"
 	"github.com/marcosArruda/swapi/pkg/models"
@@ -156,6 +157,7 @@ func (n *swApiServiceFinal) ToPersistentPlanet(ctx context.Context, p *swapi.Pla
 }
 
 func (n *swApiServiceFinal) fillFilmsFromPlanet(ctx context.Context, p *models.Planet) *models.Planet {
+	var wg sync.WaitGroup
 	if p.FilmURLs != nil && len(p.FilmURLs) > 0 {
 		n.sm.LogsService().Info(ctx, fmt.Sprintf("Planet '%s' have %d films, expanding them ..", p.Name, len(p.FilmURLs)))
 		for _, fUrl := range p.FilmURLs {
@@ -164,19 +166,23 @@ func (n *swApiServiceFinal) fillFilmsFromPlanet(ctx context.Context, p *models.P
 			if err != nil {
 				continue
 			}
-			ff, err := n.swclient.Film(idTmp)
-			if err != nil {
-				n.sm.LogsService().Warn(ctx, messages.SwApiUnavailableError.Error())
-				continue
-			}
-			f, err := n.ToPersistentFilm(ctx, &ff, idTmp, false)
-			if err != nil {
-				n.sm.LogsService().Warn(ctx, err.Error())
-				continue
-			}
-			p.Films = append(p.Films, f)
+
+			wg.Add(1)
+			go func() {
+				ff, err := n.swclient.Film(idTmp)
+				if err != nil {
+					n.sm.LogsService().Warn(ctx, messages.SwApiUnavailableError.Error())
+				}
+				f, err := n.ToPersistentFilm(ctx, &ff, idTmp, false)
+				if err != nil {
+					n.sm.LogsService().Warn(ctx, err.Error())
+				}
+				p.Films = append(p.Films, f)
+				wg.Done()
+			}()
 		}
 	}
+	wg.Wait()
 	return p
 }
 
@@ -208,6 +214,7 @@ func (n *swApiServiceFinal) ToPersistentFilm(ctx context.Context, f *swapi.Film,
 }
 
 func (n *swApiServiceFinal) fillPlanetsFromFilm(ctx context.Context, f *models.Film) *models.Film {
+	var wg sync.WaitGroup
 	if f.PlanetURLs != nil && len(f.PlanetURLs) > 0 {
 		for _, pUrl := range f.PlanetURLs {
 			s := strings.Split(pUrl, "/")
@@ -215,19 +222,22 @@ func (n *swApiServiceFinal) fillPlanetsFromFilm(ctx context.Context, f *models.F
 			if err != nil {
 				continue
 			}
-			pp, err := n.swclient.Planet(idTmp)
-			if err != nil {
-				n.sm.LogsService().Warn(ctx, messages.SwApiUnavailableError.Error())
-				continue
-			}
-			p, err := n.ToPersistentPlanet(ctx, &pp, idTmp, false)
-			if err != nil {
-				n.sm.LogsService().Warn(ctx, err.Error())
-				continue
-			}
-			f.Planets = append(f.Planets, p)
+			wg.Add(1)
+			go func() {
+				pp, err := n.swclient.Planet(idTmp)
+				if err != nil {
+					n.sm.LogsService().Warn(ctx, messages.SwApiUnavailableError.Error())
+				}
+				p, err := n.ToPersistentPlanet(ctx, &pp, idTmp, false)
+				if err != nil {
+					n.sm.LogsService().Warn(ctx, err.Error())
+				}
+				f.Planets = append(f.Planets, p)
+				wg.Done()
+			}()
 		}
 	}
+	wg.Wait()
 	return f
 }
 

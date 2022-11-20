@@ -101,7 +101,6 @@ func (n *httpServiceFinal) GetPlanetById(c *gin.Context) {
 	n.sm.LogsService().Info(c.Request.Context(), "Delegating to PlanetFinder to find the planet")
 	p, err := n.sm.PlanetFinderService().GetPlanetById(c.Request.Context(), nId)
 	if err != nil {
-		//TODO: parse error and return
 		c.IndentedJSON(http.StatusNotFound, gin.H{"message": fmt.Sprintf("Something went wrong: %s", err.Error())})
 		return
 	}
@@ -119,7 +118,6 @@ func (n *httpServiceFinal) SearchPlanetsByName(c *gin.Context) {
 	search = n.regexpRule.ReplaceAllString(search, "")
 	ps, err := n.sm.PlanetFinderService().SearchPlanetsByName(c.Request.Context(), search)
 	if err != nil {
-		//TODO: parse error and return
 		c.IndentedJSON(http.StatusNotFound, gin.H{"message": fmt.Sprintf("Error searching for Planets by name: %s", err.Error())})
 		return
 	}
@@ -131,7 +129,6 @@ func (n *httpServiceFinal) ListAllPlanets(c *gin.Context) {
 	n.sm.LogsService().Info(c.Request.Context(), c.FullPath()+" Call received")
 	p, err := n.sm.PlanetFinderService().ListAllPlanets(c.Request.Context())
 	if err != nil {
-		//TODO: parse error and return
 		c.IndentedJSON(http.StatusNotFound, gin.H{"message": fmt.Sprintf("Error listening all Planets: %s", err.Error())})
 		return
 	}
@@ -148,7 +145,6 @@ func (n *httpServiceFinal) RemovePlanetById(c *gin.Context) {
 	}
 
 	if err := n.sm.PlanetFinderService().RemovePlanetById(c.Request.Context(), nId); err != nil {
-		//TODO: parse error and return
 		c.IndentedJSON(http.StatusNotFound, gin.H{"message": fmt.Sprintf("Error Removing Planet by Id: %s", err.Error())})
 		return
 	}
@@ -165,7 +161,6 @@ func (n *httpServiceFinal) RemovePlanetByExactName(c *gin.Context) {
 	name = n.regexpRule.ReplaceAllString(name, "")
 
 	if err := n.sm.PlanetFinderService().RemovePlanetByExactName(c.Request.Context(), name); err != nil {
-		//TODO: parse error and return
 		c.IndentedJSON(http.StatusNotFound, gin.H{"message": fmt.Sprintf("Error removing planet with exact name '%s': %s", name, err.Error())})
 		return
 	}

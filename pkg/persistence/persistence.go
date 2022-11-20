@@ -91,43 +91,33 @@ func (n *persistenceServiceFinal) RemovePlanetById(ctx context.Context, id int) 
 		return nil
 	}
 	tx, err := db.BeginTransaction(ctx)
-	defer db.CommitTransaction(tx)
+
 	if err != nil {
-		n.ServiceManager().LogsService().Error(ctx, fmt.Sprintf("Error opening transaction for removing the planet with ID '%d': %s", id, err))
+		n.ServiceManager().LogsService().Error(ctx, fmt.Sprintf("Error opening transaction for removing the planet with ID '%d': %s", id, err.Error()))
 		db.RollbackTransaction(tx)
 		return err
 	}
+
 	if err = n.sm.Database().RemovePlanetById(ctx, tx, id); err != nil {
-		n.ServiceManager().LogsService().Error(ctx, fmt.Sprintf("Error Deleting Planet with ID '%d': %s", id, err))
+		n.ServiceManager().LogsService().Error(ctx, fmt.Sprintf("Error Deleting Planet with ID '%d': %s", id, err.Error()))
 		db.RollbackTransaction(tx)
 		return err
 	}
-	return nil
+	return db.CommitTransaction(tx)
 }
 
 func (n *persistenceServiceFinal) RemovePlanetByExactName(ctx context.Context, exactName string) error {
 	db := n.ServiceManager().Database()
-	p, err := db.SearchPlanetsByName(ctx, exactName)
-	if err != nil && err != messages.NoPlanetFound {
-		errCustom := &messages.PlanetError{
-			Msg: fmt.Sprintf("Error Removing planet named with name '%s': %s", exactName, err.Error())}
-		n.ServiceManager().LogsService().Error(ctx, errCustom.Msg)
-		return errCustom
-	} else if err == messages.NoPlanetFound {
-		n.ServiceManager().LogsService().Info(ctx, fmt.Sprintf("No planet found with name '%s'", exactName))
-		return nil
-	}
 	tx, err := db.BeginTransaction(ctx)
-	defer db.CommitTransaction(tx)
 	if err != nil {
 		n.ServiceManager().LogsService().Error(ctx, fmt.Sprintf("Error opening transaction for removing the planet with name '%s': %s", exactName, err.Error()))
 		db.RollbackTransaction(tx)
 		return err
 	}
-	if err = n.sm.Database().RemovePlanetById(ctx, tx, p[0].Id); err != nil {
-		n.ServiceManager().LogsService().Error(ctx, fmt.Sprintf("Error Deleting Planet with name '%s': %s", exactName, err.Error()))
+	if err = n.ServiceManager().Database().RemovePlanetByExactName(ctx, tx, exactName); err != nil {
+		n.ServiceManager().LogsService().Error(ctx, fmt.Sprintf("Error Removing planet by exact name '%s': %s", exactName, err.Error()))
 		db.RollbackTransaction(tx)
 		return err
 	}
-	return nil
+	return db.CommitTransaction(tx)
 }

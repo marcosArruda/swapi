@@ -203,7 +203,7 @@ func (n *mysqlDatabaseFinal) GetPlanetById(ctx context.Context, id int) (*models
 }
 
 func (n *mysqlDatabaseFinal) SearchPlanetsByName(ctx context.Context, name string) ([]*models.Planet, error) {
-	pRows, err := n.db.Query("SELECT id, name, climate, terrain, url FROM planet WHERE LOWER( name ) LIKE '%?%'", strings.ToLower(name))
+	pRows, err := n.db.Query("SELECT id, name, climate, terrain, url FROM planet WHERE LOWER( name ) LIKE ?", "%"+strings.ToLower(name)+"%")
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return services.EmptyPlanetSlice, messages.NoPlanetFound
@@ -428,19 +428,19 @@ func (n *mysqlDatabaseFinal) RemovePlanetById(ctx context.Context, tx *sql.Tx, i
 }
 
 func (n *mysqlDatabaseFinal) RemovePlanetByExactName(ctx context.Context, tx *sql.Tx, exactName string) error {
-	var id int
-	if err := tx.QueryRow("SELECT id from planet WHERE name = ?", exactName).Scan(id); err != nil {
+	t := models.FilmPlanet{}
+	if err := n.db.QueryRow("SELECT id from planet WHERE LOWER( name ) = ?", strings.ToLower(exactName)).Scan(&t.PId); err != nil {
 		if err == sql.ErrNoRows {
 			return nil
 		}
 	}
-	stmt, err := tx.PrepareContext(ctx, "DELETE FROM planet WHERE id = ?")
+	stmt, err := n.db.PrepareContext(ctx, "DELETE FROM planet WHERE id = ?")
 	if err != nil {
 		n.sm.LogsService().Error(ctx, fmt.Sprintf("Error when preparing SQL statement: %s", err.Error()))
 		return err
 	}
 	defer stmt.Close()
-	res, err := stmt.ExecContext(ctx, id)
+	res, err := stmt.ExecContext(ctx, t.PId)
 	if err != nil {
 		n.sm.LogsService().Error(ctx, fmt.Sprintf("Error when deleting planet: %s", err.Error()))
 		return err
