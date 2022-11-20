@@ -169,6 +169,8 @@ func Test_planetFinderServiceFinal_GetPlanetById(t *testing.T) {
 		ctx context.Context
 		id  int
 	}
+	sm, _ := NewManagerForTests()
+	pf := NewPlanetFinderService()
 	tests := []struct {
 		name    string
 		n       *planetFinderServiceFinal
