@@ -5,21 +5,39 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/marcosArruda/swapi/pkg/logs"
 	"github.com/marcosArruda/swapi/pkg/models"
 	"github.com/marcosArruda/swapi/pkg/services"
 )
+
+func NewManagerForTests() (services.ServiceManager, context.Context) {
+	asyncWorkChannel := make(chan func() error)
+	stop := make(chan struct{})
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, logs.AppEnvKey, "TESTS")
+	ctx = context.WithValue(ctx, logs.AppNameKey, logs.AppName)
+	ctx = context.WithValue(ctx, logs.AppVersionKey, logs.AppVersion)
+	return services.NewManager(asyncWorkChannel, stop), ctx
+}
 
 func Test_persistenceServiceFinal_Start(t *testing.T) {
 	type args struct {
 		ctx context.Context
 	}
+	sm, ctx := NewManagerForTests()
+	ps := NewPersistenceService().WithServiceManager(sm)
 	tests := []struct {
 		name    string
 		n       *persistenceServiceFinal
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:    "success", // Only success because PersistenceService.Start(ctx) does nothing with the Context for now
+			n:       ps.(*persistenceServiceFinal),
+			args:    args{ctx: ctx},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -34,13 +52,20 @@ func Test_persistenceServiceFinal_Close(t *testing.T) {
 	type args struct {
 		ctx context.Context
 	}
+	sm, ctx := NewManagerForTests()
+	ps := NewPersistenceService().WithServiceManager(sm)
 	tests := []struct {
 		name    string
 		n       *persistenceServiceFinal
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:    "success", // Only success because PersistenceService.Close(ctx) does nothing with the Context for now
+			n:       ps.(*persistenceServiceFinal),
+			args:    args{ctx: ctx},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -55,13 +80,20 @@ func Test_persistenceServiceFinal_Healthy(t *testing.T) {
 	type args struct {
 		ctx context.Context
 	}
+	sm, ctx := NewManagerForTests()
+	ps := NewPersistenceService().WithServiceManager(sm)
 	tests := []struct {
 		name    string
 		n       *persistenceServiceFinal
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:    "success", // Only success because PersistenceService.Healthy(ctx) does nothing with the Context for now
+			n:       ps.(*persistenceServiceFinal),
+			args:    args{ctx: ctx},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -76,13 +108,26 @@ func Test_persistenceServiceFinal_WithServiceManager(t *testing.T) {
 	type args struct {
 		sm services.ServiceManager
 	}
+	sm, _ := NewManagerForTests()
+	ps := NewPersistenceService()
 	tests := []struct {
 		name string
 		n    *persistenceServiceFinal
 		args args
 		want services.PersistenceService
 	}{
-		// TODO: Add test cases.
+		{
+			name: "success",
+			n:    ps.(*persistenceServiceFinal),
+			args: args{sm: sm},
+			want: ps,
+		},
+		{
+			name: "WithNil",
+			n:    ps.(*persistenceServiceFinal),
+			args: args{sm: nil},
+			want: ps,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -94,12 +139,22 @@ func Test_persistenceServiceFinal_WithServiceManager(t *testing.T) {
 }
 
 func Test_persistenceServiceFinal_ServiceManager(t *testing.T) {
+	sm, _ := NewManagerForTests()
 	tests := []struct {
 		name string
 		n    *persistenceServiceFinal
 		want services.ServiceManager
 	}{
-		// TODO: Add test cases.
+		{
+			name: "success",
+			n:    NewPersistenceService().WithServiceManager(sm).(*persistenceServiceFinal),
+			want: sm,
+		},
+		{
+			name: "returnNil",
+			n:    NewPersistenceService().(*persistenceServiceFinal),
+			want: nil,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -115,13 +170,51 @@ func Test_persistenceServiceFinal_UpsertPlanet(t *testing.T) {
 		ctx context.Context
 		p   *models.Planet
 	}
+	sm, ctx := NewManagerForTests()
+	ps := NewPersistenceService().WithServiceManager(sm)
+	pp, _ := sm.Database().GetPlanetById(ctx, 1)
 	tests := []struct {
 		name    string
 		n       *persistenceServiceFinal
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:    "success",
+			n:       ps.(*persistenceServiceFinal),
+			args:    args{ctx: ctx, p: pp},
+			wantErr: false,
+		},
+		{
+			name:    "dbGetError",
+			n:       ps.(*persistenceServiceFinal),
+			args:    args{ctx: ctx, p: &models.Planet{Id: 0}},
+			wantErr: true,
+		},
+		{
+			name:    "dbGetNil",
+			n:       ps.(*persistenceServiceFinal),
+			args:    args{ctx: ctx, p: &models.Planet{Id: 2}},
+			wantErr: true,
+		},
+		{
+			name:    "txBeginError",
+			n:       ps.(*persistenceServiceFinal),
+			args:    args{ctx: context.WithValue(ctx, "error", struct{}{}), p: &models.Planet{Id: 2}},
+			wantErr: true,
+		},
+		{
+			name:    "dbInsertPlanetError",
+			n:       ps.(*persistenceServiceFinal),
+			args:    args{ctx: ctx, p: &models.Planet{Id: 2}},
+			wantErr: true,
+		},
+		{
+			name:    "dbInsertPlanetSuccess",
+			n:       ps.(*persistenceServiceFinal),
+			args:    args{ctx: ctx, p: &models.Planet{Id: 3}},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -137,6 +230,16 @@ func Test_persistenceServiceFinal_GetPlanetById(t *testing.T) {
 		ctx context.Context
 		id  int
 	}
+	sm, ctx := NewManagerForTests()
+	ps := NewPersistenceService().WithServiceManager(sm)
+	p := &models.Planet{
+		Id:      1,
+		Name:    "Terra",
+		Climate: "Tropical",
+		Terrain: "continental",
+		URL:     "https://something.com/api/planet/1/",
+	}
+
 	tests := []struct {
 		name    string
 		n       *persistenceServiceFinal
@@ -144,7 +247,20 @@ func Test_persistenceServiceFinal_GetPlanetById(t *testing.T) {
 		want    *models.Planet
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:    "success",
+			n:       ps.(*persistenceServiceFinal),
+			args:    args{ctx: ctx, id: 1},
+			want:    p,
+			wantErr: false,
+		},
+		{
+			name:    "error",
+			n:       ps.(*persistenceServiceFinal),
+			args:    args{ctx: ctx, id: 0},
+			want:    nil,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -165,6 +281,8 @@ func Test_persistenceServiceFinal_SearchPlanetsByName(t *testing.T) {
 		ctx  context.Context
 		name string
 	}
+	sm, ctx := NewManagerForTests()
+	ps := NewPersistenceService().WithServiceManager(sm)
 	tests := []struct {
 		name    string
 		n       *persistenceServiceFinal
@@ -172,7 +290,20 @@ func Test_persistenceServiceFinal_SearchPlanetsByName(t *testing.T) {
 		want    []*models.Planet
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:    "success",
+			n:       ps.(*persistenceServiceFinal),
+			args:    args{ctx: ctx, name: "somename"},
+			want:    services.EmptyPlanetSlice,
+			wantErr: false,
+		},
+		{
+			name:    "error",
+			n:       ps.(*persistenceServiceFinal),
+			args:    args{ctx: ctx, name: "error"},
+			want:    services.EmptyPlanetSlice,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -192,6 +323,8 @@ func Test_persistenceServiceFinal_ListAllPlanets(t *testing.T) {
 	type args struct {
 		ctx context.Context
 	}
+	sm, ctx := NewManagerForTests()
+	ps := NewPersistenceService().WithServiceManager(sm)
 	tests := []struct {
 		name    string
 		n       *persistenceServiceFinal
@@ -199,7 +332,20 @@ func Test_persistenceServiceFinal_ListAllPlanets(t *testing.T) {
 		want    []*models.Planet
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:    "success",
+			n:       ps.(*persistenceServiceFinal),
+			args:    args{ctx: ctx},
+			want:    services.EmptyPlanetSlice,
+			wantErr: false,
+		},
+		{
+			name:    "error",
+			n:       ps.(*persistenceServiceFinal),
+			args:    args{ctx: nil},
+			want:    services.EmptyPlanetSlice,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -220,13 +366,50 @@ func Test_persistenceServiceFinal_RemovePlanetById(t *testing.T) {
 		ctx context.Context
 		id  int
 	}
+	sm, ctx := NewManagerForTests()
+	ps := NewPersistenceService().WithServiceManager(sm)
 	tests := []struct {
 		name    string
 		n       *persistenceServiceFinal
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:    "success",
+			n:       ps.(*persistenceServiceFinal),
+			args:    args{ctx: ctx, id: 1},
+			wantErr: false,
+		},
+		{
+			name:    "dbGetError",
+			n:       ps.(*persistenceServiceFinal),
+			args:    args{ctx: ctx, id: 0},
+			wantErr: true,
+		},
+		{
+			name:    "dbGetNil",
+			n:       ps.(*persistenceServiceFinal),
+			args:    args{ctx: ctx, id: -1},
+			wantErr: false,
+		},
+		{
+			name:    "txBeginError",
+			n:       ps.(*persistenceServiceFinal),
+			args:    args{ctx: context.WithValue(ctx, "error", struct{}{}), id: 2},
+			wantErr: true,
+		},
+		{
+			name:    "dbRemovePlanetError",
+			n:       ps.(*persistenceServiceFinal),
+			args:    args{ctx: context.WithValue(ctx, "removePlanetError", struct{}{}), id: 1},
+			wantErr: true,
+		},
+		{
+			name:    "dbRemovePlanetSuccess",
+			n:       ps.(*persistenceServiceFinal),
+			args:    args{ctx: ctx, id: 1},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -242,13 +425,32 @@ func Test_persistenceServiceFinal_RemovePlanetByExactName(t *testing.T) {
 		ctx       context.Context
 		exactName string
 	}
+	sm, ctx := NewManagerForTests()
+	ps := NewPersistenceService().WithServiceManager(sm)
 	tests := []struct {
 		name    string
 		n       *persistenceServiceFinal
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:    "success",
+			n:       ps.(*persistenceServiceFinal),
+			args:    args{ctx: ctx, exactName: "somename"},
+			wantErr: false,
+		},
+		{
+			name:    "dbTxBeginError",
+			n:       ps.(*persistenceServiceFinal),
+			args:    args{ctx: context.WithValue(ctx, "error", struct{}{}), exactName: "empty"},
+			wantErr: true,
+		},
+		{
+			name:    "dbRemovePlanetExactNameError",
+			n:       ps.(*persistenceServiceFinal),
+			args:    args{ctx: context.WithValue(ctx, "removePlanetExactNameError", struct{}{}), exactName: "error"},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

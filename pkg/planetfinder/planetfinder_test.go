@@ -25,7 +25,7 @@ func Test_planetFinderServiceFinal_Start(t *testing.T) {
 	type args struct {
 		ctx context.Context
 	}
-	_, ctx := NewManagerForTests()
+	sm, ctx := NewManagerForTests()
 	tests := []struct {
 		name    string
 		n       *planetFinderServiceFinal
@@ -35,7 +35,7 @@ func Test_planetFinderServiceFinal_Start(t *testing.T) {
 		{
 			name:    "success", //here is just the success case is needed because PlanetFinderService.Start(ctx) does nothing with the ctx yet
 			args:    args{ctx: ctx},
-			n:       NewPlanetFinderService().(*planetFinderServiceFinal),
+			n:       sm.WithPlanetFinderService(NewPlanetFinderService()).PlanetFinderService().(*planetFinderServiceFinal),
 			wantErr: false,
 		},
 	}
@@ -138,7 +138,6 @@ func Test_planetFinderServiceFinal_WithServiceManager(t *testing.T) {
 
 func Test_planetFinderServiceFinal_ServiceManager(t *testing.T) {
 	sm, _ := NewManagerForTests()
-	pf := NewPlanetFinderService()
 	tests := []struct {
 		name string
 		n    *planetFinderServiceFinal
@@ -146,12 +145,12 @@ func Test_planetFinderServiceFinal_ServiceManager(t *testing.T) {
 	}{
 		{
 			name: "success",
-			n:    pf.WithServiceManager(sm).(*planetFinderServiceFinal),
+			n:    NewPlanetFinderService().WithServiceManager(sm).(*planetFinderServiceFinal),
 			want: sm,
 		},
 		{
 			name: "successNil",
-			n:    pf.WithServiceManager(nil).(*planetFinderServiceFinal),
+			n:    NewPlanetFinderService().WithServiceManager(nil).(*planetFinderServiceFinal),
 			want: nil,
 		},
 	}
@@ -169,8 +168,10 @@ func Test_planetFinderServiceFinal_GetPlanetById(t *testing.T) {
 		ctx context.Context
 		id  int
 	}
-	sm, _ := NewManagerForTests()
-	pf := NewPlanetFinderService()
+	sm, ctx := NewManagerForTests()
+	pf := NewPlanetFinderService().WithServiceManager(sm)
+
+	want, _ := sm.SwApiService().GetPlanetById(ctx, 1)
 	tests := []struct {
 		name    string
 		n       *planetFinderServiceFinal
@@ -178,7 +179,20 @@ func Test_planetFinderServiceFinal_GetPlanetById(t *testing.T) {
 		want    *models.Planet
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:    "success",
+			args:    args{ctx: ctx, id: 1},
+			n:       pf.(*planetFinderServiceFinal),
+			want:    want,
+			wantErr: false,
+		},
+		{
+			name:    "returnNilCallingSwApiService",
+			args:    args{ctx: ctx, id: 0},
+			n:       pf.(*planetFinderServiceFinal),
+			want:    nil,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -199,6 +213,9 @@ func Test_planetFinderServiceFinal_SearchPlanetsByName(t *testing.T) {
 		ctx  context.Context
 		name string
 	}
+	sm, ctx := NewManagerForTests()
+	pf := NewPlanetFinderService().WithServiceManager(sm)
+	want, _ := sm.SwApiService().SearchPlanetsByName(ctx, "")
 	tests := []struct {
 		name    string
 		n       *planetFinderServiceFinal
@@ -206,7 +223,20 @@ func Test_planetFinderServiceFinal_SearchPlanetsByName(t *testing.T) {
 		want    []*models.Planet
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:    "success",
+			args:    args{ctx: ctx, name: "p"},
+			n:       pf.(*planetFinderServiceFinal),
+			want:    want,
+			wantErr: false,
+		},
+		{
+			name:    "anyError",
+			args:    args{ctx: ctx, name: "error"},
+			n:       pf.(*planetFinderServiceFinal),
+			want:    services.EmptyPlanetSlice,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -226,6 +256,8 @@ func Test_planetFinderServiceFinal_ListAllPlanets(t *testing.T) {
 	type args struct {
 		ctx context.Context
 	}
+	sm, ctx := NewManagerForTests()
+	pf := NewPlanetFinderService().WithServiceManager(sm)
 	tests := []struct {
 		name    string
 		n       *planetFinderServiceFinal
@@ -233,7 +265,20 @@ func Test_planetFinderServiceFinal_ListAllPlanets(t *testing.T) {
 		want    []*models.Planet
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:    "success",
+			args:    args{ctx: ctx},
+			n:       pf.(*planetFinderServiceFinal),
+			want:    services.EmptyPlanetSlice,
+			wantErr: false,
+		},
+		{
+			name:    "anyError",
+			args:    args{ctx: nil},
+			n:       pf.(*planetFinderServiceFinal),
+			want:    services.EmptyPlanetSlice,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -254,13 +299,26 @@ func Test_planetFinderServiceFinal_RemovePlanetById(t *testing.T) {
 		ctx context.Context
 		id  int
 	}
+	sm, ctx := NewManagerForTests()
+	pf := NewPlanetFinderService().WithServiceManager(sm)
 	tests := []struct {
 		name    string
 		n       *planetFinderServiceFinal
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:    "success",
+			args:    args{ctx: ctx, id: 1},
+			n:       pf.(*planetFinderServiceFinal),
+			wantErr: false,
+		},
+		{
+			name:    "anyError",
+			args:    args{ctx: ctx, id: 0},
+			n:       pf.(*planetFinderServiceFinal),
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -276,13 +334,26 @@ func Test_planetFinderServiceFinal_RemovePlanetByExactName(t *testing.T) {
 		ctx       context.Context
 		exactName string
 	}
+	sm, ctx := NewManagerForTests()
+	pf := NewPlanetFinderService().WithServiceManager(sm)
 	tests := []struct {
 		name    string
 		n       *planetFinderServiceFinal
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:    "success",
+			args:    args{ctx: ctx, exactName: "Terra"},
+			n:       pf.(*planetFinderServiceFinal),
+			wantErr: false,
+		},
+		{
+			name:    "anyError",
+			args:    args{ctx: ctx, exactName: "empty"},
+			n:       pf.(*planetFinderServiceFinal),
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

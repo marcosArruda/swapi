@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 )
 
 type (
@@ -30,7 +31,15 @@ func (f *noOpsLogsService) WithServiceManager(sm ServiceManager) LogsService {
 func (f *noOpsLogsService) ServiceManager() ServiceManager {
 	return f.sm
 }
-func (f *noOpsLogsService) Info(ctx context.Context, s string)  {}
-func (f *noOpsLogsService) Warn(ctx context.Context, s string)  {}
-func (f *noOpsLogsService) Error(ctx context.Context, s string) {}
-func (f *noOpsLogsService) Debug(ctx context.Context, s string) {}
+func (f *noOpsLogsService) Info(ctx context.Context, s string) {
+	fmt.Println("(TESTS-INFO) " + s)
+}
+func (f *noOpsLogsService) Warn(ctx context.Context, s string) {
+	fmt.Println("(TESTS-WARN) " + s)
+}
+func (f *noOpsLogsService) Error(ctx context.Context, s string) {
+	fmt.Println("(TESTS-ERROR) " + s)
+}
+func (f *noOpsLogsService) Debug(ctx context.Context, s string) {
+	fmt.Println("(TESTS-DEBUG) " + s)
+}

@@ -56,13 +56,16 @@ func (n *persistenceServiceFinal) UpsertPlanet(ctx context.Context, p *models.Pl
 	}
 	tx, err := db.BeginTransaction(ctx)
 	if err != nil {
+		db.RollbackTransaction(tx)
 		return err
 	}
 	err = db.InsertPlanet(ctx, tx, p)
 	if err != nil {
+		db.RollbackTransaction(tx)
 		return err
 	}
-	tx.Commit()
+	db.CommitTransaction(tx)
+
 	return nil
 }
 
@@ -80,10 +83,10 @@ func (n *persistenceServiceFinal) ListAllPlanets(ctx context.Context) ([]*models
 
 func (n *persistenceServiceFinal) RemovePlanetById(ctx context.Context, id int) error {
 	db := n.ServiceManager().Database()
-	p, err := db.GetPlanetById(ctx, id)
+	_, err := db.GetPlanetById(ctx, id)
 	if err != nil && err != messages.NoPlanetFound {
 		errCustom := &messages.PlanetError{
-			Msg: fmt.Sprintf("Error Removing planet named with ID '%d': %s", p.Id, err.Error())}
+			Msg: fmt.Sprintf("Error Removing planet named with ID '%d': %s", id, err.Error())}
 		n.ServiceManager().LogsService().Error(ctx, errCustom.Msg)
 		return errCustom
 	} else if err == messages.NoPlanetFound {
@@ -111,7 +114,6 @@ func (n *persistenceServiceFinal) RemovePlanetByExactName(ctx context.Context, e
 	tx, err := db.BeginTransaction(ctx)
 	if err != nil {
 		n.ServiceManager().LogsService().Error(ctx, fmt.Sprintf("Error opening transaction for removing the planet with name '%s': %s", exactName, err.Error()))
-		db.RollbackTransaction(tx)
 		return err
 	}
 	if err = n.ServiceManager().Database().RemovePlanetByExactName(ctx, tx, exactName); err != nil {

@@ -21,7 +21,7 @@ func TestNewLogsService(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewLogsService(tt.args.ctx); !reflect.DeepEqual(got, tt.want) {
+			if got := NewLogsService(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewLogsService() = %v, want %v", got, tt.want)
 			}
 		})

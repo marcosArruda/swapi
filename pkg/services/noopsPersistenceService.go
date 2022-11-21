@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 
 	"github.com/marcosArruda/swapi/pkg/models"
 )
@@ -50,13 +51,23 @@ func (n *noOpsPersistenceService) SearchPlanetsByName(ctx context.Context, name 
 }
 
 func (n *noOpsPersistenceService) ListAllPlanets(ctx context.Context) ([]*models.Planet, error) {
-	return EmptyPlanetSlice, nil
+	if ctx != nil {
+		return EmptyPlanetSlice, nil
+	}
+	return EmptyPlanetSlice, errors.New("some error")
+
 }
 
 func (n *noOpsPersistenceService) RemovePlanetById(ctx context.Context, id int) error {
-	return nil
+	if id == 1 {
+		return nil
+	}
+	return errors.New("some error")
 }
 
 func (n *noOpsPersistenceService) RemovePlanetByExactName(ctx context.Context, exactName string) error {
+	if exactName == "empty" {
+		return errors.New("some error")
+	}
 	return nil
 }

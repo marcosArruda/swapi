@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 
 	"github.com/marcosArruda/swapi/pkg/models"
 	"github.com/peterhellberg/swapi"
@@ -9,12 +10,13 @@ import (
 
 type (
 	noOpsSwApiService struct {
-		sm ServiceManager
+		sm     ServiceManager
+		online bool
 	}
 )
 
 func NewNoOpsSwService() SwApiService {
-	return &noOpsSwApiService{}
+	return &noOpsSwApiService{online: true}
 }
 
 func (n *noOpsSwApiService) Start(ctx context.Context) error {
@@ -39,13 +41,40 @@ func (n *noOpsSwApiService) ServiceManager() ServiceManager {
 }
 
 func (n *noOpsSwApiService) GetPlanetById(ctx context.Context, id int) (*models.Planet, error) {
-	return &models.Planet{
-		Name: "DummyPlanet",
-	}, nil
+	if id == 1 {
+		return &models.Planet{
+			Id:      1,
+			Name:    "Terra",
+			Climate: "Tropical",
+			Terrain: "continental",
+			URL:     "https://something.com/api/planet/1/",
+		}, nil
+	} else if id == 0 {
+		return nil, errors.New("dummy Error")
+	}
+	return nil, nil
 }
 
 func (n *noOpsSwApiService) SearchPlanetsByName(ctx context.Context, name string) ([]*models.Planet, error) {
-	return EmptyPlanetSlice, nil
+	if name != "error" {
+		return []*models.Planet{
+			{
+				Id:      1,
+				Name:    "Terra",
+				Climate: "Tropical",
+				Terrain: "continental",
+				URL:     "https://something.com/api/planet/1/",
+			},
+			{
+				Id:      2,
+				Name:    "Marte",
+				Climate: "Hazard",
+				Terrain: "Blob",
+				URL:     "https://something.com/api/planet/2/",
+			},
+		}, nil
+	}
+	return EmptyPlanetSlice, errors.New("some Error")
 }
 
 func (n *noOpsSwApiService) ToPersistentPlanet(ctx context.Context, p *swapi.Planet, id int, expand bool) (*models.Planet, error) {
@@ -60,12 +89,14 @@ func (n *noOpsSwApiService) ToPersistentFilm(ctx context.Context, f *swapi.Film,
 }
 
 func (n *noOpsSwApiService) PutOnline() SwApiService {
+	n.online = true
 	return n
 }
 func (n *noOpsSwApiService) PutOffline() SwApiService {
+	n.online = false
 	return n
 }
 
 func (n *noOpsSwApiService) IsOnline() bool {
-	return false
+	return n.online
 }

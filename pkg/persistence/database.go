@@ -17,8 +17,9 @@ import (
 
 type (
 	mysqlDatabaseFinal struct {
-		sm services.ServiceManager
-		db *sql.DB
+		sm     services.ServiceManager
+		db     *sql.DB
+		mockDb bool
 	}
 )
 
@@ -53,12 +54,6 @@ var (
 			ON DELETE CASCADE
 	)`
 
-	/*
-				FOREIGN KEY (parent_id)
-		        REFERENCES parent(id)
-		        ON DELETE CASCADE
-	*/
-
 	getFilmsFromPlanet = `SELECT f.id, f.title, f.episodeid, f.director, f.created, f.url FROM film f
 	INNER JOIN planet_film pf ON pf.filmid = f.id  
 	INNER JOIN planet p ON p.id = pf.planetid 
@@ -69,51 +64,46 @@ func NewDatabase() services.Database {
 	return &mysqlDatabaseFinal{}
 }
 
+func (n *mysqlDatabaseFinal) buildConnection(ctx context.Context, mockDb *sql.DB) error {
+	if mockDb == nil {
+		dbName := os.Getenv("DB_NAME")
+		dbUser := os.Getenv("DB_USER")
+		dbPass := os.Getenv("DB_PASSWORD")
+		dbHostPort := os.Getenv("DB_HOSTPORT")
+		db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s)/%s", dbUser, dbPass, dbHostPort, dbName))
+		if err != nil {
+			n.sm.LogsService().Error(ctx, err.Error())
+			return err
+		}
+		db.SetMaxOpenConns(5)
+		db.SetMaxIdleConns(5)
+		db.SetConnMaxLifetime(time.Minute * 5)
+		n.db = db
+	} else {
+		n.db = mockDb
+	}
+	return nil
+}
+
 func (n *mysqlDatabaseFinal) Start(ctx context.Context) error {
 	sm := n.ServiceManager()
-	dbName := os.Getenv("DB_NAME")
-	dbUser := os.Getenv("DB_USER")
-	dbPass := os.Getenv("DB_PASSWORD")
-	dbHostPort := os.Getenv("DB_HOSTPORT")
-
-	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s)/%s", dbUser, dbPass, dbHostPort, dbName))
-
+	mdb := ctx.Value("mockDb")
+	var err error
+	if mdb == nil {
+		err = n.buildConnection(ctx, nil)
+	} else {
+		err = n.buildConnection(ctx, ctx.Value("mockDb").(*sql.DB))
+	}
 	if err != nil {
-		sm.LogsService().Error(ctx, err.Error())
 		return err
 	}
-	db.SetMaxOpenConns(5)
-	db.SetMaxIdleConns(5)
-	db.SetConnMaxLifetime(time.Minute * 5)
 
-	n.db = db
-	if err = n.Healthy(ctx); err != nil {
-		sm.LogsService().Error(ctx, err.Error())
-		return err
-	}
 	sm.LogsService().Info(ctx, "Database Started!")
 	sm.LogsService().Info(ctx, "Creating Tables ...")
 	if err = n.createTablesIfNotExists(ctx); err != nil {
 		sm.LogsService().Error(ctx, "Error creating tables: "+err.Error())
 		return err
 	}
-
-	//n.InsertPlanet(ctx, &models.Planet{
-	//	Id:      9999,
-	//	Name:    "Terra",
-	//	Climate: "Good",
-	//	Terrain: "solid",
-	//	URL:     "http://something.com/planet/9999",
-	//})
-	//p, err := n.GetPlanetById(ctx, 9999)
-	//if err != nil {
-	//	return err
-	//}
-	//fmt.Printf("Planet{id: %d, name: %s, climate: %s, terrain: %s, url: %s}", p.Id, p.Name, p.Climate, p.Terrain, p.URL)
-	//fmt.Println("")
-	//if err = n.RemovePlanetById(ctx, 9999); err != nil {
-	//	return err
-	//}
 	sm.LogsService().Info(ctx, "Basic Tables Created!")
 	return nil
 }
@@ -123,6 +113,7 @@ func (n *mysqlDatabaseFinal) createTablesIfNotExists(ctx context.Context) error 
 	if err != nil {
 		return err
 	}
+
 	_, err = n.db.ExecContext(ctx, planetCreateTable)
 	if err != nil {
 		return err
@@ -152,12 +143,12 @@ func (n *mysqlDatabaseFinal) ServiceManager() services.ServiceManager {
 }
 
 func (n *mysqlDatabaseFinal) BeginTransaction(ctx context.Context) (*sql.Tx, error) {
-	txCtx, _ := context.WithTimeout(ctx, 10*time.Second)
+	//txCtx, _ := context.WithTimeout(ctx, 10*time.Second)
 	//defer cancel()
 
-	tx, err := n.db.BeginTx(txCtx, nil)
+	tx, err := n.db.Begin()
 	if err != nil {
-		n.sm.LogsService().Error(txCtx, fmt.Sprintf("Error creating transaction: %s", err.Error()))
+		n.sm.LogsService().Error(ctx, fmt.Sprintf("Error creating transaction: %s", err.Error()))
 		return nil, err
 	}
 	return tx, nil

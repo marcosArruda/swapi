@@ -67,14 +67,15 @@ func (n *planetFinderServiceFinal) GetPlanetById(ctx context.Context, id int) (*
 			}
 		}
 		asynContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-
-		n.sm.AsyncWorkChannel() <- func() error { //async persistence ...
-			defer cancel()
-			if err = n.sm.PersistenceService().UpsertPlanet(asynContext, pp); err != nil {
-				return err
+		go func() {
+			n.sm.AsyncWorkChannel() <- func() error { //async persistence ...
+				defer cancel()
+				if err = n.sm.PersistenceService().UpsertPlanet(asynContext, pp); err != nil {
+					return err
+				}
+				return nil
 			}
-			return nil
-		}
+		}()
 
 		return pp, nil
 	}
@@ -90,15 +91,17 @@ func (n *planetFinderServiceFinal) SearchPlanetsByName(ctx context.Context, name
 		return services.EmptyPlanetSlice, err
 	}
 
-	for _, pp := range ps {
-		asynContext := context.WithValue(context.Background(), PlanetNameTagLabel, pp.Name)
-		n.sm.AsyncWorkChannel() <- func() error { //async persistence ...
-			if err = n.sm.PersistenceService().UpsertPlanet(asynContext, pp); err != nil {
-				return err
+	go func() {
+		for _, pp := range ps {
+			asynContext := context.WithValue(context.Background(), PlanetNameTagLabel, pp.Name)
+			n.sm.AsyncWorkChannel() <- func() error { //async persistence ...
+				if err = n.sm.PersistenceService().UpsertPlanet(asynContext, pp); err != nil {
+					return err
+				}
+				return nil
 			}
-			return nil
 		}
-	}
+	}()
 	return ps, nil
 }
 
