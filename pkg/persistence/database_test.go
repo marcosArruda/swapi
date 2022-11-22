@@ -15,6 +15,26 @@ import (
 	"github.com/marcosArruda/swapi/pkg/services"
 )
 
+var (
+	basicPlanet = &models.Planet{
+		Id:      1,
+		Name:    "Terra",
+		Climate: "tropical",
+		Terrain: "terra",
+		Films: []*models.Film{
+			{
+				Id:        1,
+				Title:     "Filme da terra",
+				EpisodeID: 1,
+				Created:   "800 quintilhões de anos atras",
+				Director:  "Único",
+				URL:       "https://something.com/api/film/1/",
+			},
+		},
+		URL: "https://something.com/api/planet/1/",
+	}
+)
+
 func NewManagerForTestsDatabase() (services.ServiceManager, context.Context) {
 	asyncWorkChannel := make(chan func() error)
 	stop := make(chan struct{})
@@ -385,120 +405,177 @@ func Test_mysqlDatabaseFinal_RollbackTransaction(t *testing.T) {
 
 func Test_mysqlDatabaseFinal_GetPlanetById(t *testing.T) {
 	type args struct {
-		ctx context.Context
-		id  int
+		id int
 	}
-	sm, ctx := NewManagerForTestsDatabase()
-	dbService := sm.WithDatabase(NewDatabase()).Database()
-	db, mock := buildTransactionsMock(t)
-
-	basicPlanet := &models.Planet{
-		Id:      1,
-		Name:    "Terra",
-		Climate: "tropical",
-		Terrain: "terra",
-		Films: []*models.Film{
-			{
-				Id:        1,
-				Title:     "Filme da terra",
-				EpisodeID: 1,
-				Created:   "800 quintilhões de anos atras",
-				Director:  "Único",
-				URL:       "https://something.com/api/film/1/",
-			},
-		},
-		URL: "https://something.com/api/planet/1/",
-	}
-
-	expPlanet := mock.ExpectQuery("FROM planet")
-	expPlanet.WillReturnRows(sqlmock.NewRows([]string{"id", "name", "climate", "terrain", "url"}).
-		FromCSVString("1,Terra,tropical,terra,https://something.com/api/planet/1/"))
-
-	expFilm := mock.ExpectQuery("FROM film")
-	expFilm.WillReturnRows(sqlmock.NewRows([]string{"id", "title", "episode_id", "created", "director", "url"}).
-		FromCSVString("1,title,1,800 quintilhões de anos atras,Único,https://something.com/api/film/1/"))
-
-	ctx = context.WithValue(ctx, "mockDb", db)
-	dbService.Start(ctx)
-
 	tests := []struct {
 		name    string
-		n       *mysqlDatabaseFinal
 		args    args
 		want    *models.Planet
+		dbFunc  func() *sql.DB
 		wantErr bool
 	}{
 		{
-			name:    "success",
-			n:       dbService.(*mysqlDatabaseFinal),
-			args:    args{ctx: ctx, id: 1},
+			name: "success",
+			args: args{id: 1},
+			dbFunc: func() *sql.DB {
+				db, mock, err := sqlmock.New()
+				if err != nil {
+					t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+				}
+				mock.ExpectExec("CREATE TABLE IF NOT EXISTS film").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectExec("CREATE TABLE IF NOT EXISTS planet").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectExec("CREATE TABLE IF NOT EXISTS planet_film").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectQuery("FROM planet").WithArgs(1).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "climate", "terrain", "url"}).
+					FromCSVString("1,Terra,tropical,terra,https://something.com/api/planet/1/"))
+				mock.ExpectQuery("FROM film").WithArgs(1).
+					WillReturnRows(sqlmock.NewRows([]string{"id", "title", "episode_id", "created", "director", "url"}).
+						FromCSVString("1,title,1,800 quintilhões de anos atras,Único,https://something.com/api/film/1/"))
+				return db
+			},
 			want:    basicPlanet,
 			wantErr: false,
+		},
+		{
+			name: "planetErrNoRows",
+			args: args{id: 2},
+			dbFunc: func() *sql.DB {
+				db, mock, err := sqlmock.New()
+				if err != nil {
+					t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+				}
+				mock.ExpectExec("CREATE TABLE IF NOT EXISTS film").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectExec("CREATE TABLE IF NOT EXISTS planet").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectExec("CREATE TABLE IF NOT EXISTS planet_film").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectQuery("FROM planet").WithArgs(2).WillReturnError(sql.ErrNoRows)
+				return db
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "planetErrAny",
+			args: args{id: 3},
+			dbFunc: func() *sql.DB {
+				db, mock, err := sqlmock.New()
+				if err != nil {
+					t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+				}
+				mock.ExpectExec("CREATE TABLE IF NOT EXISTS film").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectExec("CREATE TABLE IF NOT EXISTS planet").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectExec("CREATE TABLE IF NOT EXISTS planet_film").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectQuery("FROM planet").WithArgs(3).WillReturnError(errors.New("some error"))
+
+				return db
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "FilmsErrNoRows",
+			args: args{id: 4},
+			dbFunc: func() *sql.DB {
+				db, mock, err := sqlmock.New()
+				if err != nil {
+					t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+				}
+				mock.ExpectExec("CREATE TABLE IF NOT EXISTS film").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectExec("CREATE TABLE IF NOT EXISTS planet").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectExec("CREATE TABLE IF NOT EXISTS planet_film").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectQuery("FROM planet").WithArgs(4).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "climate", "terrain", "url"}).
+					FromCSVString("4,Terra,tropical,terra,https://something.com/api/planet/1/"))
+				mock.ExpectQuery("FROM film").WithArgs(4).
+					WillReturnError(sql.ErrNoRows)
+				return db
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "FilmsErrAny",
+			args: args{id: 5},
+			dbFunc: func() *sql.DB {
+				db, mock, err := sqlmock.New()
+				if err != nil {
+					t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+				}
+				mock.ExpectExec("CREATE TABLE IF NOT EXISTS film").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectExec("CREATE TABLE IF NOT EXISTS planet").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectExec("CREATE TABLE IF NOT EXISTS planet_film").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectQuery("FROM planet").WithArgs(5).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "climate", "terrain", "url"}).
+					FromCSVString("5,Terra,tropical,terra,https://something.com/api/planet/1/"))
+				mock.ExpectQuery("FROM film").WithArgs(5).
+					WillReturnError(errors.New("some error"))
+				return db
+			},
+			want:    nil,
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.n.GetPlanetById(tt.args.ctx, tt.args.id)
+			sm, ctx := NewManagerForTestsDatabase()
+			ctxTmp := context.WithValue(ctx, "mockDb", tt.dbFunc())
+			dbService := sm.WithDatabase(NewDatabase()).Database().(*mysqlDatabaseFinal)
+			sm.Start(ctxTmp)
+			got, err := dbService.GetPlanetById(ctxTmp, tt.args.id)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("mysqlDatabaseFinal.GetPlanetById() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !planetSuperficialDeepEqual(got, tt.want) {
+			if !tt.wantErr && !planetSuperficialDeepEqual(got, tt.want) {
 				t.Errorf("mysqlDatabaseFinal.GetPlanetById() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func planetSuperficialDeepEqual(p1 *models.Planet, p2 *models.Planet) bool {
-	return p1.Id == p2.Id && p1.Name == p2.Name && p1.Terrain == p2.Terrain && p1.Climate == p2.Climate
-}
-
 func Test_mysqlDatabaseFinal_SearchPlanetsByName(t *testing.T) {
 	type args struct {
-		ctx  context.Context
 		name string
 	}
+	wantP1 := []*models.Planet{basicPlanet}
 	tests := []struct {
 		name    string
-		n       *mysqlDatabaseFinal
 		args    args
+		dbFunc  func() *sql.DB
 		want    []*models.Planet
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "success", //just success for now because its just MANUAL WORK to make the other cases..
+			args: args{name: "name1"},
+			dbFunc: func() *sql.DB {
+				db, mock, err := sqlmock.New()
+				if err != nil {
+					t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+				}
+				mock.ExpectExec("CREATE TABLE IF NOT EXISTS film").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectExec("CREATE TABLE IF NOT EXISTS planet").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectExec("CREATE TABLE IF NOT EXISTS planet_film").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectQuery("FROM planet").WithArgs("%name1%").WillReturnRows(sqlmock.NewRows([]string{"id", "name", "climate", "terrain", "url"}).
+					FromCSVString("1,Terra,tropical,terra,https://something.com/api/planet/1/"))
+				mock.ExpectQuery("FROM film").WithArgs(1).
+					WillReturnRows(sqlmock.NewRows([]string{"id", "title", "episode_id", "created", "director", "url"}).
+						FromCSVString("1,title,1,800 quintilhões de anos atras,Único,https://something.com/api/film/1/"))
+				return db
+			},
+			want:    wantP1,
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.n.SearchPlanetsByName(tt.args.ctx, tt.args.name)
+			sm, ctx := NewManagerForTestsDatabase()
+			ctxTmp := context.WithValue(ctx, "mockDb", tt.dbFunc())
+			dbService := sm.WithDatabase(NewDatabase()).Database().(*mysqlDatabaseFinal)
+			sm.Start(ctxTmp)
+			got, err := dbService.SearchPlanetsByName(ctxTmp, tt.args.name)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("mysqlDatabaseFinal.SearchPlanetsByName() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
+			if len(got) > 0 && !planetSuperficialDeepEqual(got[0], tt.want[0]) {
 				t.Errorf("mysqlDatabaseFinal.SearchPlanetsByName() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_mysqlDatabaseFinal_fillFilms(t *testing.T) {
-	type args struct {
-		ctx context.Context
-		p   *models.Planet
-	}
-	tests := []struct {
-		name    string
-		n       *mysqlDatabaseFinal
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.n.fillFilms(tt.args.ctx, tt.args.p); (err != nil) != tt.wantErr {
-				t.Errorf("mysqlDatabaseFinal.fillFilms() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
@@ -506,21 +583,56 @@ func Test_mysqlDatabaseFinal_fillFilms(t *testing.T) {
 
 func Test_mysqlDatabaseFinal_InsertPlanet(t *testing.T) {
 	type args struct {
-		ctx                 context.Context
-		tx                  *sql.Tx
 		readyToInsertPlanet *models.Planet
 	}
 	tests := []struct {
 		name    string
-		n       *mysqlDatabaseFinal
 		args    args
+		dbFunc  func() *sql.DB
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "success", //just manual work to make other cases. For now, I will pass, but I KNOW that in production apps we need to cover ALL..
+			args: args{readyToInsertPlanet: basicPlanet},
+			dbFunc: func() *sql.DB {
+				db, mock, err := sqlmock.New()
+				if err != nil {
+					t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+				}
+				mock.ExpectExec("CREATE TABLE IF NOT EXISTS film").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectExec("CREATE TABLE IF NOT EXISTS planet").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectExec("CREATE TABLE IF NOT EXISTS planet_film").WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectBegin()
+				mock.ExpectPrepare("INSERT INTO planet").
+					ExpectExec().WithArgs(basicPlanet.Id, basicPlanet.Name, basicPlanet.Climate, basicPlanet.Terrain, basicPlanet.URL).
+					WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectQuery("FROM planet_film").WithArgs(1, 1).WillReturnError(sql.ErrNoRows)
+				mock.ExpectQuery("FROM film").WithArgs(1).WillReturnError(sql.ErrNoRows)
+				mock.ExpectPrepare("INSERT INTO film").ExpectExec().WithArgs(
+					basicPlanet.Films[0].Id,
+					basicPlanet.Films[0].Title,
+					basicPlanet.Films[0].EpisodeID,
+					basicPlanet.Films[0].Director,
+					basicPlanet.Films[0].Created,
+					basicPlanet.Films[0].URL,
+				).WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectPrepare("INSERT INTO planet_film").ExpectExec().
+					WithArgs(basicPlanet.Films[0].Id, basicPlanet.Id).
+					WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectCommit()
+				return db
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.n.InsertPlanet(tt.args.ctx, tt.args.tx, tt.args.readyToInsertPlanet); (err != nil) != tt.wantErr {
+			sm, ctx := NewManagerForTestsDatabase()
+			ctxTmp := context.WithValue(ctx, "mockDb", tt.dbFunc())
+			dbService := sm.WithDatabase(NewDatabase()).Database().(*mysqlDatabaseFinal)
+			sm.Start(ctxTmp)
+			tx, _ := sm.Database().BeginTransaction(ctxTmp)
+			if err := dbService.InsertPlanet(ctxTmp, tx, tt.args.readyToInsertPlanet); (err != nil) != tt.wantErr {
 				t.Errorf("mysqlDatabaseFinal.InsertPlanet() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -768,4 +880,8 @@ func Test_mysqlDatabaseFinal_emptyAndGenericError(t *testing.T) {
 			}
 		})
 	}
+}
+
+func planetSuperficialDeepEqual(p1 *models.Planet, p2 *models.Planet) bool {
+	return p1.Id == p2.Id && p1.Name == p2.Name && p1.Terrain == p2.Terrain && p1.Climate == p2.Climate
 }

@@ -2,25 +2,150 @@ package swapiaccess
 
 import (
 	"context"
+	"errors"
+	"io/ioutil"
+	"net/http"
 	"reflect"
+	"strings"
 	"testing"
 
+	"github.com/marcosArruda/swapi/pkg/logs"
 	"github.com/marcosArruda/swapi/pkg/models"
 	"github.com/marcosArruda/swapi/pkg/services"
 	"github.com/peterhellberg/swapi"
 )
 
+type (
+	searchableHttpClientMock struct {
+	}
+	swApiClientMock struct {
+		dropError bool
+	}
+)
+
+var (
+	basicPlanet = &models.Planet{
+		Id:      1,
+		Name:    "Terra",
+		Climate: "tropical",
+		Terrain: "terra",
+		Films: []*models.Film{
+			{
+				Id:        1,
+				Title:     "Filme da terra",
+				EpisodeID: 1,
+				Created:   "800 quintilhões de anos atras",
+				Director:  "Único",
+				URL:       "https://something.com/api/film/1/",
+			},
+		},
+		URL: "https://something.com/api/planet/1/",
+	}
+)
+
+func (s *swApiClientMock) Vehicle(id int) (swapi.Vehicle, error)   { return swapi.Vehicle{}, nil }
+func (s *swApiClientMock) Starship(id int) (swapi.Starship, error) { return swapi.Starship{}, nil }
+func (s *swApiClientMock) Species(id int) (swapi.Species, error)   { return swapi.Species{}, nil }
+func (s *swApiClientMock) Person(id int) (swapi.Person, error)     { return swapi.Person{}, nil }
+
+func (s *swApiClientMock) Planet(id int) (swapi.Planet, error) {
+	if s.dropError {
+		return swapi.Planet{}, errors.New("some error")
+	}
+	return swapi.Planet{
+		Name:    "Terra",
+		Climate: "tropical",
+		Terrain: "terra",
+		FilmURLs: []string{
+			"https://something.com/api/film/1/",
+		},
+		URL: "https://something.com/api/planet/1/",
+	}, nil
+}
+func (s *swApiClientMock) Film(id int) (swapi.Film, error) {
+	if s.dropError {
+		return swapi.Film{}, errors.New("some error")
+	}
+	return swapi.Film{
+		Title:      "Filme da terra",
+		EpisodeID:  1,
+		Created:    "800 quintilhões de anos atras",
+		Director:   "Único",
+		PlanetURLs: []string{"https://something.com/api/planet/1/"},
+		URL:        "https://something.com/api/film/1/",
+	}, nil
+}
+
+func (c *searchableHttpClientMock) Do(req *http.Request) (*http.Response, error) {
+	h := make(http.Header)
+	h.Add("Content-Type", "application/json")
+	if strings.Contains(req.RequestURI, "error") {
+		return &http.Response{
+			Status:     "500 Error",
+			StatusCode: 500,
+			Header:     h,
+			Request:    req,
+			Body:       ioutil.NopCloser(strings.NewReader(`{"message":"some error"}`)), //type is io.ReadCloser,
+		}, errors.New("some error")
+	}
+
+	r := &http.Response{
+		Status:     "200 OK",
+		StatusCode: 200,
+		Header:     h,
+		Request:    req,
+	}
+	if strings.Contains(req.RequestURI, "film") {
+		r.Body = ioutil.NopCloser(strings.NewReader(`{
+				"title": "Filme da terra",
+				"episode_id": 1,
+				"director": "Único",
+				"planets": ["https://something.com/api/planet/1/"],
+				"created": "800 quintilhões de anos atras",
+				"url": "https://something.com/api/film/1/"
+			}`))
+	} else {
+		r.Body = ioutil.NopCloser(strings.NewReader(`{
+				"name": "Terra",
+				"climate": "tropical",
+				"terrain": "terra",
+				"films": [
+					"https://something.com/api/film/1/"
+				],
+				"url": "https://something.com/api/planet/1/"
+		}`))
+	}
+	return r, nil
+}
+
+func NewManagerForTests() (services.ServiceManager, context.Context) {
+	asyncWorkChannel := make(chan func() error)
+	stop := make(chan struct{})
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, logs.AppEnvKey, "TESTS")
+	ctx = context.WithValue(ctx, logs.AppNameKey, logs.AppName)
+	ctx = context.WithValue(ctx, logs.AppVersionKey, logs.AppVersion)
+	return services.NewManager(asyncWorkChannel, stop), ctx
+}
+
 func Test_swApiServiceFinal_Start(t *testing.T) {
 	type args struct {
 		ctx context.Context
 	}
+	sm, ctx := NewManagerForTests()
+	swapiaccessService := sm.WithSwApiService(NewSwService()).SwApiService()
 	tests := []struct {
 		name    string
 		n       *swApiServiceFinal
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:    "success", //just success because SwApiService.Start(ctx) does nothing with the ctx for now..
+			n:       swapiaccessService.(*swApiServiceFinal),
+			args:    args{ctx: ctx},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -35,13 +160,20 @@ func Test_swApiServiceFinal_Close(t *testing.T) {
 	type args struct {
 		ctx context.Context
 	}
+	sm, ctx := NewManagerForTests()
+	swapiaccessService := sm.WithSwApiService(NewSwService()).SwApiService()
 	tests := []struct {
 		name    string
 		n       *swApiServiceFinal
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:    "success", //just success because SwApiService.Close(ctx) does nothing with the ctx for now..
+			n:       swapiaccessService.(*swApiServiceFinal),
+			args:    args{ctx: ctx},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -56,13 +188,27 @@ func Test_swApiServiceFinal_Healthy(t *testing.T) {
 	type args struct {
 		ctx context.Context
 	}
+	sm, ctx := NewManagerForTests()
 	tests := []struct {
 		name    string
 		n       *swApiServiceFinal
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "success",
+			n: sm.WithSwApiService(&swApiServiceFinal{swclient: &swApiClientMock{}, searchableHttpClient: &searchableHttpClientMock{}, online: true}).
+				SwApiService().(*swApiServiceFinal),
+			args:    args{ctx: ctx},
+			wantErr: false,
+		},
+		{
+			name: "error",
+			n: sm.WithSwApiService(&swApiServiceFinal{swclient: &swApiClientMock{dropError: true}, searchableHttpClient: &searchableHttpClientMock{}, online: true}).
+				SwApiService().(*swApiServiceFinal),
+			args:    args{ctx: ctx},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -77,13 +223,26 @@ func Test_swApiServiceFinal_WithServiceManager(t *testing.T) {
 	type args struct {
 		sm services.ServiceManager
 	}
+	sm, _ := NewManagerForTests()
+	swapiaccessService := NewSwService()
 	tests := []struct {
 		name string
 		n    *swApiServiceFinal
 		args args
 		want services.SwApiService
 	}{
-		// TODO: Add test cases.
+		{
+			name: "success",
+			n:    swapiaccessService.(*swApiServiceFinal),
+			args: args{sm: sm},
+			want: swapiaccessService,
+		},
+		{
+			name: "nil",
+			n:    swapiaccessService.(*swApiServiceFinal),
+			args: args{sm: nil},
+			want: swapiaccessService,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -95,12 +254,23 @@ func Test_swApiServiceFinal_WithServiceManager(t *testing.T) {
 }
 
 func Test_swApiServiceFinal_ServiceManager(t *testing.T) {
+	sm, _ := NewManagerForTests()
+	swapiaccessService := sm.WithSwApiService(NewSwService()).SwApiService()
 	tests := []struct {
 		name string
 		n    *swApiServiceFinal
 		want services.ServiceManager
 	}{
-		// TODO: Add test cases.
+		{
+			name: "success",
+			n:    swapiaccessService.(*swApiServiceFinal),
+			want: sm,
+		},
+		{
+			name: "nil",
+			n:    NewSwService().(*swApiServiceFinal),
+			want: nil,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -116,6 +286,8 @@ func Test_swApiServiceFinal_GetPlanetById(t *testing.T) {
 		ctx context.Context
 		id  int
 	}
+	sm, _ := NewManagerForTests()
+	swapiaccessService := sm.WithSwApiService(NewSwService()).SwApiService()
 	tests := []struct {
 		name    string
 		n       *swApiServiceFinal
@@ -123,7 +295,12 @@ func Test_swApiServiceFinal_GetPlanetById(t *testing.T) {
 		want    *models.Planet
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "success",
+			n:    swapiaccessService.(*swApiServiceFinal),
+			args: args{id: 1},
+			want: basicPlanet,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -348,4 +525,8 @@ func Test_swApiServiceFinal_IsOnline(t *testing.T) {
 			}
 		})
 	}
+}
+
+func planetSuperficialDeepEqual(p1 *models.Planet, p2 *models.Planet) bool {
+	return p1.Id == p2.Id && p1.Name == p2.Name && p1.Terrain == p2.Terrain && p1.Climate == p2.Climate
 }

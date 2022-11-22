@@ -17,11 +17,22 @@ import (
 )
 
 type (
+	SwApiClient interface {
+		Vehicle(id int) (swapi.Vehicle, error)
+		Starship(id int) (swapi.Starship, error)
+		Species(id int) (swapi.Species, error)
+		Planet(id int) (swapi.Planet, error)
+		Person(id int) (swapi.Person, error)
+		Film(id int) (swapi.Film, error)
+	}
+	BasicHttpClient interface {
+		Do(req *http.Request) (*http.Response, error)
+	}
 	swApiServiceFinal struct {
 		sm                   services.ServiceManager
-		swclient             *swapi.Client
+		swclient             SwApiClient
 		online               bool
-		searchableHttpClient *http.Client
+		searchableHttpClient BasicHttpClient
 	}
 )
 
