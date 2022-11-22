@@ -189,3 +189,9 @@
 		}
 	]
 }
+
+
+
+
+&{1 Filme da terra 1 Único [https://something.com/api/planet/1/] [0xc00041a200] 800 quintilhões de anos atras https://something.com/api/film/1/},
+want &{1 Filme da terra 1 Único [] [] 800 quintilhões de anos atras https://something.com/api/film/1/}

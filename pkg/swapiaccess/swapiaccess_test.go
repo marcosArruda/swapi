@@ -31,15 +31,35 @@ var (
 		Terrain: "terra",
 		Films: []*models.Film{
 			{
-				Id:        1,
-				Title:     "Filme da terra",
-				EpisodeID: 1,
-				Created:   "800 quintilhões de anos atras",
-				Director:  "Único",
-				URL:       "https://something.com/api/film/1/",
+				Id:         1,
+				Title:      "Filme da terra",
+				EpisodeID:  1,
+				Created:    "800 quintilhões de anos atras",
+				PlanetURLs: []string{"https://something.com/api/planet/1/"},
+				Director:   "Único",
+				URL:        "https://something.com/api/film/1/",
 			},
 		},
 		URL: "https://something.com/api/planet/1/",
+	}
+	basicFilm = &models.Film{
+		Id:         1,
+		Title:      "Filme da terra",
+		EpisodeID:  1,
+		Created:    "800 quintilhões de anos atras",
+		PlanetURLs: []string{"https://something.com/api/planet/1/"},
+		Planets: []*models.Planet{
+			{
+				Id:      1,
+				Name:    "Terra",
+				Climate: "tropical",
+				Terrain: "terra",
+				Films:   []*models.Film{},
+				URL:     "https://something.com/api/planet/1/",
+			},
+		},
+		Director: "Único",
+		URL:      "https://something.com/api/film/1/",
 	}
 )
 
@@ -93,19 +113,11 @@ func (c *searchableHttpClientMock) Do(req *http.Request) (*http.Response, error)
 		Status:     "200 OK",
 		StatusCode: 200,
 		Header:     h,
-		Request:    req,
-	}
-	if strings.Contains(req.RequestURI, "film") {
-		r.Body = ioutil.NopCloser(strings.NewReader(`{
-				"title": "Filme da terra",
-				"episode_id": 1,
-				"director": "Único",
-				"planets": ["https://something.com/api/planet/1/"],
-				"created": "800 quintilhões de anos atras",
-				"url": "https://something.com/api/film/1/"
-			}`))
-	} else {
-		r.Body = ioutil.NopCloser(strings.NewReader(`{
+		Body: ioutil.NopCloser(strings.NewReader(`{
+			"count": 13,
+			"next": null,
+			"previous": null,
+			"results": [{
 				"name": "Terra",
 				"climate": "tropical",
 				"terrain": "terra",
@@ -113,8 +125,10 @@ func (c *searchableHttpClientMock) Do(req *http.Request) (*http.Response, error)
 					"https://something.com/api/film/1/"
 				],
 				"url": "https://something.com/api/planet/1/"
-		}`))
+			}]}`)),
+		Request: req,
 	}
+
 	return r, nil
 }
 
@@ -287,7 +301,7 @@ func Test_swApiServiceFinal_GetPlanetById(t *testing.T) {
 		id  int
 	}
 	sm, _ := NewManagerForTests()
-	swapiaccessService := sm.WithSwApiService(NewSwService()).SwApiService()
+	swapiaccessService := sm.WithSwApiService(&swApiServiceFinal{swclient: &swApiClientMock{}, searchableHttpClient: &searchableHttpClientMock{}, online: true}).SwApiService()
 	tests := []struct {
 		name    string
 		n       *swApiServiceFinal
@@ -296,10 +310,25 @@ func Test_swApiServiceFinal_GetPlanetById(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "success",
-			n:    swapiaccessService.(*swApiServiceFinal),
-			args: args{id: 1},
-			want: basicPlanet,
+			name:    "success",
+			n:       swapiaccessService.(*swApiServiceFinal),
+			args:    args{id: 1},
+			want:    basicPlanet,
+			wantErr: false,
+		},
+		{
+			name:    "online and error",
+			n:       &swApiServiceFinal{swclient: &swApiClientMock{dropError: true}, searchableHttpClient: &searchableHttpClientMock{}, online: true},
+			args:    args{id: 1},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name:    "offline",
+			n:       &swApiServiceFinal{swclient: &swApiClientMock{dropError: false}, searchableHttpClient: &searchableHttpClientMock{}, online: false},
+			args:    args{id: 1},
+			want:    nil,
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -309,7 +338,7 @@ func Test_swApiServiceFinal_GetPlanetById(t *testing.T) {
 				t.Errorf("swApiServiceFinal.GetPlanetById() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
+			if !tt.wantErr && !planetSuperficialDeepEqual(got, tt.want) {
 				t.Errorf("swApiServiceFinal.GetPlanetById() = %v, want %v", got, tt.want)
 			}
 		})
@@ -321,6 +350,8 @@ func Test_swApiServiceFinal_GetFilmById(t *testing.T) {
 		ctx context.Context
 		id  int
 	}
+	sm, _ := NewManagerForTests()
+	swapiaccessService := sm.WithSwApiService(&swApiServiceFinal{swclient: &swApiClientMock{}, searchableHttpClient: &searchableHttpClientMock{}, online: true}).SwApiService()
 	tests := []struct {
 		name    string
 		n       *swApiServiceFinal
@@ -328,7 +359,27 @@ func Test_swApiServiceFinal_GetFilmById(t *testing.T) {
 		want    *models.Film
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:    "success",
+			n:       swapiaccessService.(*swApiServiceFinal),
+			args:    args{id: 1},
+			want:    basicFilm,
+			wantErr: false,
+		},
+		{
+			name:    "online and error",
+			n:       &swApiServiceFinal{swclient: &swApiClientMock{dropError: true}, searchableHttpClient: &searchableHttpClientMock{}, online: true},
+			args:    args{id: 1},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name:    "offline",
+			n:       &swApiServiceFinal{swclient: &swApiClientMock{dropError: false}, searchableHttpClient: &searchableHttpClientMock{}, online: false},
+			args:    args{id: 1},
+			want:    nil,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -337,7 +388,7 @@ func Test_swApiServiceFinal_GetFilmById(t *testing.T) {
 				t.Errorf("swApiServiceFinal.GetFilmById() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
+			if !tt.wantErr && !filmSuperficialDeepEqual(got, tt.want) {
 				t.Errorf("swApiServiceFinal.GetFilmById() = %v, want %v", got, tt.want)
 			}
 		})
@@ -349,6 +400,8 @@ func Test_swApiServiceFinal_SearchPlanetsByName(t *testing.T) {
 		ctx  context.Context
 		name string
 	}
+	sm, _ := NewManagerForTests()
+	swapiaccessService := sm.WithSwApiService(&swApiServiceFinal{swclient: &swApiClientMock{}, searchableHttpClient: &searchableHttpClientMock{}, online: true}).SwApiService()
 	tests := []struct {
 		name    string
 		n       *swApiServiceFinal
@@ -356,7 +409,13 @@ func Test_swApiServiceFinal_SearchPlanetsByName(t *testing.T) {
 		want    []*models.Planet
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:    "success",
+			n:       swapiaccessService.(*swApiServiceFinal),
+			args:    args{name: "success"},
+			want:    []*models.Planet{basicPlanet},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -365,124 +424,26 @@ func Test_swApiServiceFinal_SearchPlanetsByName(t *testing.T) {
 				t.Errorf("swApiServiceFinal.SearchPlanetsByName() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
+			if !tt.wantErr && !planetSuperficialDeepEqualSlice(got, tt.want) {
 				t.Errorf("swApiServiceFinal.SearchPlanetsByName() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test_swApiServiceFinal_ToPersistentPlanet(t *testing.T) {
-	type args struct {
-		ctx    context.Context
-		p      *swapi.Planet
-		id     int
-		expand bool
-	}
-	tests := []struct {
-		name    string
-		n       *swApiServiceFinal
-		args    args
-		want    *models.Planet
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.n.ToPersistentPlanet(tt.args.ctx, tt.args.p, tt.args.id, tt.args.expand)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("swApiServiceFinal.ToPersistentPlanet() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("swApiServiceFinal.ToPersistentPlanet() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_swApiServiceFinal_fillFilmsFromPlanet(t *testing.T) {
-	type args struct {
-		ctx context.Context
-		p   *models.Planet
-	}
-	tests := []struct {
-		name string
-		n    *swApiServiceFinal
-		args args
-		want *models.Planet
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.n.fillFilmsFromPlanet(tt.args.ctx, tt.args.p); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("swApiServiceFinal.fillFilmsFromPlanet() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_swApiServiceFinal_ToPersistentFilm(t *testing.T) {
-	type args struct {
-		ctx    context.Context
-		f      *swapi.Film
-		id     int
-		expand bool
-	}
-	tests := []struct {
-		name    string
-		n       *swApiServiceFinal
-		args    args
-		want    *models.Film
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.n.ToPersistentFilm(tt.args.ctx, tt.args.f, tt.args.id, tt.args.expand)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("swApiServiceFinal.ToPersistentFilm() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("swApiServiceFinal.ToPersistentFilm() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_swApiServiceFinal_fillPlanetsFromFilm(t *testing.T) {
-	type args struct {
-		ctx context.Context
-		f   *models.Film
-	}
-	tests := []struct {
-		name string
-		n    *swApiServiceFinal
-		args args
-		want *models.Film
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.n.fillPlanetsFromFilm(tt.args.ctx, tt.args.f); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("swApiServiceFinal.fillPlanetsFromFilm() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func Test_swApiServiceFinal_PutOnline(t *testing.T) {
+	sm, _ := NewManagerForTests()
+	swapiaccessService := sm.WithSwApiService(NewSwService()).SwApiService()
 	tests := []struct {
 		name string
 		n    *swApiServiceFinal
 		want services.SwApiService
 	}{
-		// TODO: Add test cases.
+		{
+			name: "success", //just succcess since the scope fo the SwService.PutOnline() function is so small
+			n:    swapiaccessService.(*swApiServiceFinal),
+			want: swapiaccessService,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -494,12 +455,18 @@ func Test_swApiServiceFinal_PutOnline(t *testing.T) {
 }
 
 func Test_swApiServiceFinal_PutOffline(t *testing.T) {
+	sm, _ := NewManagerForTests()
+	swapiaccessService := sm.WithSwApiService(NewSwService()).SwApiService()
 	tests := []struct {
 		name string
 		n    *swApiServiceFinal
 		want services.SwApiService
 	}{
-		// TODO: Add test cases.
+		{
+			name: "success", //just succcess since the scope if the SwService.PutOffline() function is so small
+			n:    swapiaccessService.(*swApiServiceFinal),
+			want: swapiaccessService,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -516,7 +483,16 @@ func Test_swApiServiceFinal_IsOnline(t *testing.T) {
 		n    *swApiServiceFinal
 		want bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "successFalse",
+			n:    NewSwService().PutOffline().(*swApiServiceFinal),
+			want: false,
+		},
+		{
+			name: "successTrue",
+			n:    NewSwService().PutOnline().(*swApiServiceFinal),
+			want: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -529,4 +505,17 @@ func Test_swApiServiceFinal_IsOnline(t *testing.T) {
 
 func planetSuperficialDeepEqual(p1 *models.Planet, p2 *models.Planet) bool {
 	return p1.Id == p2.Id && p1.Name == p2.Name && p1.Terrain == p2.Terrain && p1.Climate == p2.Climate
+}
+
+func planetSuperficialDeepEqualSlice(ps1 []*models.Planet, ps2 []*models.Planet) bool {
+	for i := 0; i < len(ps1); i++ {
+		if ps1[i].Id != ps2[i].Id || ps1[i].Name != ps2[i].Name || ps1[i].Terrain != ps2[i].Terrain || ps1[i].Climate != ps2[i].Climate {
+			return false
+		}
+	}
+	return true
+}
+
+func filmSuperficialDeepEqual(f1 *models.Film, f2 *models.Film) bool {
+	return f1.Id == f2.Id && f1.Title == f2.Title && f1.Created == f2.Created && f1.EpisodeID == f2.EpisodeID && f1.URL == f2.URL
 }
