@@ -8,21 +8,28 @@ import (
 	"github.com/marcosArruda/swapi/pkg/services"
 )
 
+func NewManagerForTests() (services.ServiceManager, context.Context) {
+	asyncWorkChannel := make(chan func() error)
+	stop := make(chan struct{})
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, AppEnvKey, "TESTS")
+	ctx = context.WithValue(ctx, AppNameKey, AppName)
+	ctx = context.WithValue(ctx, AppVersionKey, AppVersion)
+	return services.NewManager(asyncWorkChannel, stop), ctx
+}
+
 func TestNewLogsService(t *testing.T) {
-	type args struct {
-		ctx context.Context
-	}
 	tests := []struct {
 		name string
-		args args
-		want services.LogsService
 	}{
-		// TODO: Add test cases.
+		{
+			name: "success",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewLogsService(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewLogsService() = %v, want %v", got, tt.want)
+			if got := NewLogsService(); got == nil {
+				t.Errorf("Got a Nil Logger!")
 			}
 		})
 	}
@@ -32,13 +39,20 @@ func Test_logsServiceFinal_Start(t *testing.T) {
 	type args struct {
 		ctx context.Context
 	}
+	_, ctx := NewManagerForTests()
+	s := NewLogsService()
 	tests := []struct {
 		name    string
 		f       *logsServiceFinal
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:    "success",
+			f:       s.(*logsServiceFinal),
+			args:    args{ctx},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -53,13 +67,20 @@ func Test_logsServiceFinal_Close(t *testing.T) {
 	type args struct {
 		ctx context.Context
 	}
+	_, ctx := NewManagerForTests()
+	s := NewLogsService()
 	tests := []struct {
 		name    string
 		f       *logsServiceFinal
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:    "success",
+			f:       s.(*logsServiceFinal),
+			args:    args{ctx},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -74,13 +95,20 @@ func Test_logsServiceFinal_Healthy(t *testing.T) {
 	type args struct {
 		ctx context.Context
 	}
+	_, ctx := NewManagerForTests()
+	s := NewLogsService()
 	tests := []struct {
 		name    string
 		f       *logsServiceFinal
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:    "success",
+			f:       s.(*logsServiceFinal),
+			args:    args{ctx},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -95,13 +123,26 @@ func Test_logsServiceFinal_WithServiceManager(t *testing.T) {
 	type args struct {
 		sm services.ServiceManager
 	}
+	sm, _ := NewManagerForTests()
+	s := NewLogsService()
 	tests := []struct {
 		name string
 		f    *logsServiceFinal
 		args args
 		want services.LogsService
 	}{
-		// TODO: Add test cases.
+		{
+			name: "success",
+			f:    s.(*logsServiceFinal),
+			args: args{sm},
+			want: s,
+		},
+		{
+			name: "successnil",
+			f:    s.(*logsServiceFinal),
+			args: args{sm: nil},
+			want: s,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -113,94 +154,24 @@ func Test_logsServiceFinal_WithServiceManager(t *testing.T) {
 }
 
 func Test_logsServiceFinal_ServiceManager(t *testing.T) {
+	sm, _ := NewManagerForTests()
+	s := NewLogsService()
 	tests := []struct {
 		name string
 		f    *logsServiceFinal
 		want services.ServiceManager
 	}{
-		// TODO: Add test cases.
+		{
+			name: "success",
+			f:    sm.WithLogsService(s).LogsService().(*logsServiceFinal),
+			want: sm,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.f.ServiceManager(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("logsServiceFinal.ServiceManager() = %v, want %v", got, tt.want)
 			}
-		})
-	}
-}
-
-func Test_logsServiceFinal_Info(t *testing.T) {
-	type args struct {
-		ctx context.Context
-		s   string
-	}
-	tests := []struct {
-		name string
-		f    *logsServiceFinal
-		args args
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.f.Info(tt.args.ctx, tt.args.s)
-		})
-	}
-}
-
-func Test_logsServiceFinal_Warn(t *testing.T) {
-	type args struct {
-		ctx context.Context
-		s   string
-	}
-	tests := []struct {
-		name string
-		f    *logsServiceFinal
-		args args
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.f.Warn(tt.args.ctx, tt.args.s)
-		})
-	}
-}
-
-func Test_logsServiceFinal_Error(t *testing.T) {
-	type args struct {
-		ctx context.Context
-		s   string
-	}
-	tests := []struct {
-		name string
-		f    *logsServiceFinal
-		args args
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.f.Error(tt.args.ctx, tt.args.s)
-		})
-	}
-}
-
-func Test_logsServiceFinal_Debug(t *testing.T) {
-	type args struct {
-		ctx context.Context
-		s   string
-	}
-	tests := []struct {
-		name string
-		f    *logsServiceFinal
-		args args
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.f.Debug(tt.args.ctx, tt.args.s)
 		})
 	}
 }
