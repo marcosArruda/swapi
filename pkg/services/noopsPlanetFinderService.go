@@ -38,6 +38,28 @@ func (n *noOpsPlanetFinderService) ServiceManager() ServiceManager {
 }
 
 func (n *noOpsPlanetFinderService) GetPlanetById(ctx context.Context, id int) (*models.Planet, error) {
+	if id == 1 {
+		return &models.Planet{
+			Id:       1,
+			Name:     "Terra",
+			Climate:  "tropical",
+			Terrain:  "terra",
+			FilmURLs: []string{"https://something.com/api/films/1/"},
+			URL:      "https://something.com/api/planets/1/",
+			Films: []*models.Film{
+				{
+					Id:         1,
+					Title:      "Filme da Terra",
+					EpisodeID:  1,
+					Director:   "Único",
+					Created:    "800 quintilhões de anos atras",
+					PlanetURLs: []string{"https://something.com/api/planets/1/"},
+					Planets:    EmptyPlanetSlice,
+					URL:        "https://something.com/api/films/1/",
+				},
+			},
+		}, nil
+	}
 	return nil, nil
 }
 

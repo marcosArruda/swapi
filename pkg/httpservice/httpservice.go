@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/marcosArruda/swapi/pkg/logs"
 	"github.com/marcosArruda/swapi/pkg/services"
 
 	"github.com/gin-gonic/gin"
@@ -22,6 +23,7 @@ type (
 		router     *gin.Engine
 		srv        *http.Server
 		regexpRule *regexp.Regexp
+		quit       chan os.Signal
 	}
 )
 
@@ -43,19 +45,26 @@ func (n *httpServiceFinal) Start(ctx context.Context) error {
 		Handler: n.router,
 	}
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	n.quit = make(chan os.Signal, 1)
+	signal.Notify(n.quit, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
 		// http interface connection
 		if err := n.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			n.sm.LogsService().Error(ctx, fmt.Sprintf("listen error: %s\n", err.Error()))
-			quit <- syscall.SIGINT
+			n.quit <- syscall.SIGINT
 		}
 		n.sm.LogsService().Info(ctx, "Http Server Listening!")
 	}()
 
-	<-quit
+	go func() {
+		if ctx.Value(logs.AppEnvKey) == "TESTS" {
+			time.Sleep(5 * time.Second)
+			n.Close(ctx)
+		}
+	}()
+
+	<-n.quit
 	n.sm.LogsService().Info(ctx, "shuting down server ...")
 
 	ctxT, cancel := context.WithTimeout(ctx, 2*time.Second)
@@ -74,6 +83,7 @@ func (n *httpServiceFinal) Start(ctx context.Context) error {
 }
 
 func (n *httpServiceFinal) Close(ctx context.Context) error {
+	n.quit <- syscall.SIGINT
 	return nil
 }
 
