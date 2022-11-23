@@ -9,7 +9,9 @@ COPY go.* .
 RUN go mod download
 COPY . .
 RUN --mount=type=cache,target=/root/.cache/go-build go build -o ./out/swapi-app ./cmd/main/main.go
-#RUN CGO_ENABLED=0 go test -v
+
+# ===== UNCOMMENT THE FOLLOWING LINE TO ALSO RUN UNIT TESTS AFTER THE BUILD =====
+#RUN --mount=type=cache,target=/root/.cache/go-build go test -v -coverpkg=./... -coverprofile=profile.cov ./...; go tool cover -func profile.cov
 
 FROM alpine:3.16
 RUN apk add ca-certificates
