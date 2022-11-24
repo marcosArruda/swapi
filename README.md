@@ -28,6 +28,8 @@ O padrão _Inversão de Controle_ consiste em permitir que outra entidade se enc
 
 No nosso caso, o **ServiceManager** é a entidade _responsável por controlar o ciclo de vida de TODOS os outos componentes da aplicação e essa é **a única responsabilidade dessa entidade(SOLID)**_. Dessa forma, se o +PlanetFinderService_ precisar utilizar o _SwApiService_ para realizar a request para a API pública, com uma única linha de código o _PlanetFinderService_ recebe do _ServiceManager_ a instância do _SwApiService_ e em seguida ja tem acesso à interface pública dela. Este mesmo comportamente existe no _"diálogo"_ entre TODAS os _serviços/componentes_ do sistema, **isolando-os e desacoplando-os**.
 
+O ServiceManager utiliza de 'api fluente' para possibilitar um fácil uso de todas as funções do ciclo de vida, como exemplificado no cmd/main/main.go da aplicação.
+
 ##### NoOps (No Operation)
 
 _No Operation_ é um nome pouco conhecido na industria do software, porém, é bastante utilizado. Inspirado na construção civil, um famoso exemplo do padrão é a existência das _"bolas de aço de equilibrio"_ utilizadas na construção de predios muito grandes em locais onde existe muito vento. Com a pressão do vento, todo prédio muito alto enverga e desenverga naturalmente. No centro desses prédios existe SEMPRE uma grande bola de aço presa por uma corda de aço no teto e pendurada há uma certa altura(metade do prédio normalmente) suspensa no ar. Esta bola balança conforme o prédio _"inclina-se"_ fazendo o papel de ajuste do centro de equilibrio do prédio.
