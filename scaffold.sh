@@ -11,6 +11,10 @@ case "$1" in
     echo 'Running build!'
     docker-compose build
     ;;
+  "restartapp"
+    echo 'Running Restart on swapiapp!'
+    docker-compose restart swapiapp
+    ;;
   "runtests")
     echo 'Running tests!'
     go test -v -coverpkg=./... -coverprofile=profile.cov ./...; go tool cover -func profile.cov

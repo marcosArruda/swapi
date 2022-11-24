@@ -10,21 +10,21 @@ import (
 
 type (
 	logsServiceFinal struct {
-		sm     services.ServiceManager
-		logger *zap.Logger
+		sm              services.ServiceManager
+		logger          *zap.Logger
+		AppNameField    zap.Field
+		AppVersionField zap.Field
+		AppEnvField     zap.Field
 	}
 )
 
 var (
-	AppNameKey      string = "AppName"
-	AppVersionKey   string = "AppVersion"
-	AppEnvKey       string = "AppEnv"
-	AppName         string = "swapiapp"
-	AppVersion      string = "1.0"
-	AppEnv          string = "PROD"
-	AppNameField    *zap.Field
-	AppVersionField *zap.Field
-	AppEnvField     *zap.Field
+	AppNameKey    string = "service"
+	AppVersionKey string = "version"
+	AppEnvKey     string = "env"
+	AppName       string = "swapiapp"
+	AppVersion    string = "1.0"
+	AppEnv        string = "PROD"
 )
 
 func NewLogsService() services.LogsService {
@@ -37,12 +37,9 @@ func NewLogsService() services.LogsService {
 }
 
 func (f *logsServiceFinal) Start(ctx context.Context) error {
-	name := zap.String(AppNameKey, ctx.Value(AppNameKey).(string))
-	AppNameField = &name
-	version := zap.String(AppVersionKey, ctx.Value(AppVersionKey).(string))
-	AppVersionField = &version
-	env := zap.String(AppEnvKey, ctx.Value(AppEnvKey).(string))
-	AppEnvField = &env
+	f.AppNameField = zap.String(AppNameKey, AppName)
+	f.AppVersionField = zap.String(AppVersionKey, AppVersion)
+	f.AppEnvField = zap.String(AppEnvKey, AppEnv)
 	f.Info(ctx, "Staring LogsService")
 	return nil
 }
@@ -60,14 +57,14 @@ func (f *logsServiceFinal) ServiceManager() services.ServiceManager {
 	return f.sm
 }
 func (f *logsServiceFinal) Info(ctx context.Context, s string) {
-	f.logger.Info(s, *AppEnvField, *AppNameField, *AppVersionField)
+	f.logger.Info(s, f.AppEnvField, f.AppNameField, f.AppVersionField)
 }
 func (f *logsServiceFinal) Warn(ctx context.Context, s string) {
-	f.logger.Warn(s, *AppEnvField, *AppNameField, *AppVersionField)
+	f.logger.Warn(s, f.AppEnvField, f.AppNameField, f.AppVersionField)
 }
 func (f *logsServiceFinal) Error(ctx context.Context, s string) {
-	f.logger.Error(s, *AppEnvField, *AppNameField, *AppVersionField)
+	f.logger.Error(s, f.AppEnvField, f.AppNameField, f.AppVersionField)
 }
 func (f *logsServiceFinal) Debug(ctx context.Context, s string) {
-	f.logger.Debug(s, *AppEnvField, *AppNameField, *AppVersionField)
+	f.logger.Debug(s, f.AppEnvField, f.AppNameField, f.AppVersionField)
 }

@@ -242,7 +242,6 @@ func (m *serviceManagerFinal) PersistenceService() PersistenceService {
 }
 
 func (m *serviceManagerFinal) WithDatabase(db Database) ServiceManager {
-	m.LogsService().Info(context.Background(), "Doing WithDatabase")
 	m.database = db.WithServiceManager(m)
 	return m
 }
