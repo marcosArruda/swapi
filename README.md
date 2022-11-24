@@ -22,7 +22,7 @@ Seguindo os princípios **SOLID**, o código segue uma estrutura em camadas com 
 ![Fluxo Básico](/imgs/Diagram.png?raw=true "Fluxo Básico")
 Vamos agora destrinchar esses dois padrões de design principais utilizados:
 
-##### Inversão de Controle
+### Inversão de Controle
 
 O padrão _Inversão de Controle_ consiste em permitir que outra entidade se encarregue de gerenciar o ciclo de vida de **TODAS** as dependências(objetos/instâncias) de um componente específico. Por exemplo, o componente _PlanetFinderService_ precisa dos componentes _SwApiService_ e do componente _PersistenceService_ para executar suas funções. Numa aplicação que não utilize _Inversão de Controle_, o _PlanetFinderService_ seria o responsável por **instânciar** os objetos dos quais ele depende e assim o mesmo acaba sendo responsável por controlar todo o ciclo de vida desses componentes, fazendo-se necessário dessa forma implementar dentro do _PlanetFinderService_ todo código de controle(boilerplate code) para os componentes dependentes.
 
@@ -30,7 +30,7 @@ No nosso caso, o **ServiceManager** é a entidade _responsável por controlar o 
 
 O ServiceManager utiliza de 'api fluente' para possibilitar um fácil uso de todas as funções do ciclo de vida, como exemplificado no cmd/main/main.go da aplicação.
 
-##### NoOps (No Operation)
+### NoOps (No Operation)
 
 _No Operation_ é um nome pouco conhecido na industria do software, porém, é bastante utilizado. Inspirado na construção civil, um famoso exemplo do padrão é a existência das _"bolas de aço de equilibrio"_ utilizadas na construção de predios muito grandes em locais onde existe muito vento. Com a pressão do vento, todo prédio muito alto enverga e desenverga naturalmente. No centro desses prédios existe SEMPRE uma grande bola de aço presa por uma corda de aço no teto e pendurada há uma certa altura(metade do prédio normalmente) suspensa no ar. Esta bola balança conforme o prédio _"inclina-se"_ fazendo o papel de ajuste do centro de equilibrio do prédio.
 
